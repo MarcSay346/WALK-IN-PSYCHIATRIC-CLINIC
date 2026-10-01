@@ -15,6 +15,32 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Header Logo Branding Styles */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.logo-img {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+.logo-title {
+  font-weight: 800;
+  color: #1A1A1A !important; /* Forces dark/black color over default link styles */
+}
+
+.logo-subtitle {
+  font-weight: 500;
+  color: #B9B0D9 !important; /* Forces purple-gray color */
+}
+
 body {
   background-color: var(--light-bg);
   color: var(--dark-text);
