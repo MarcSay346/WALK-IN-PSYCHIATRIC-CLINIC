@@ -1,8 +1,10 @@
 
-<nav>
-  <ul>
-    <li><a href="index.html">Home</a></li>
-    <li><a href="about.html">About</a></li>
-    <li><a href="contact.html">Notifications</a></li>
-  </ul>
-</nav>
+  <nav class="navbar">
+    <a class="brand" href="index.html">Project Name</a>
+    <ul>
+      ${navLinks.map(link => `
+        <li><a href="${link.href}" class="${link.href === currentPage ? "active" : ""}">${link.text}</a></li>
+      `).join("")}
+    </ul>
+  </nav>`;
+
