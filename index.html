@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+
+<div id="nav-placeholder"></div>
+<script>
+  document.getElementById('nav-placeholder').innerHTML =
+    fetch('navbar.html')
+      .then(res => res.text())
+      .then(data => {
+        document.getElementById('nav-placeholder').innerHTML = data;
+      })
+      .catch(err => console.error('Error loading navbar:', err));
+</script>
+
 <html>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
