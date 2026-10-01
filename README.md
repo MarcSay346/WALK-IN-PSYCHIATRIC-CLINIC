@@ -7,3 +7,7 @@ Project Members: Marc Rolan Say, Chelsea D Nissen, Sara Sofia Montes Lopez, Kays
 TECHNOLOGY USED: 
   Microsoft SQL(database)
   C#(backend html dront end using .net razor pages)
+
+Color Scheme: 
+  Blue : #A1CEFA 
+  Purple Gray : #B9B0D9
