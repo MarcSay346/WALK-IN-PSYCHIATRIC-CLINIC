@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Notifications | Walk-In Psychiatric Clinic</title>
-  <link rel="icon" href="brain-logo-transparent.png" />
+  <title>Notifications | Radiant Mind</title>
+  <link rel="icon" href="brain-logo.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!--nav bar-->
+  <!--nav-->
   <div id="nav-placeholder"></div>
   <script src="navbar.js"></script>
 
@@ -26,10 +26,10 @@
       <button class="tab" data-filter="status">Status changes</button>
     </div>
 
-    <!--notification list-->
+    <!--list-->
     <ul class="notif-list" id="notif-list"></ul>
 
-    <!--demo buttons-->
+    <!--demo-->
     <div class="demo">
       <span>Demo:</span>
       <button class="btn-small" id="sim-queue">Simulate queue update</button>
@@ -37,7 +37,7 @@
       <button class="link-btn" id="reset">Reset</button>
     </div>
 
-    <!--settings form-->
+    <!--form-->
     <section class="settings">
       <h2>Notification settings</h2>
       <form id="prefs-form" novalidate>
@@ -60,7 +60,7 @@
     </section>
   </main>
 
-  <!--pop-up-->
+  <!--popup-->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
@@ -78,7 +78,7 @@
 
     let prefs = loadPrefs();
 
-    //notification list
+    //list
     let notifications = loadNotifications();
     let currentFilter = "all";
 
@@ -86,7 +86,7 @@
     const unreadBadge = document.getElementById("unread-badge");
     const labels = { queue: "Queue update", status: "Status change" };
 
-    //show list
+    //render
     function render() {
       const shown = notifications.filter(n => currentFilter === "all" || n.type === currentFilter);
 
@@ -113,7 +113,7 @@
       updateNavBadge();
     }
 
-    //mark one read
+    //read one
     listEl.addEventListener("click", e => {
       const item = e.target.closest(".notif");
       if (!item) return;
@@ -122,7 +122,7 @@
       render();
     });
 
-    //mark all read
+    //read all
     document.getElementById("mark-all").addEventListener("click", () => {
       notifications.forEach(n => n.read = true);
       render();
@@ -138,7 +138,7 @@
       });
     });
 
-    //pop-up
+    //popup
     let toastTimer;
     function showToast(label, title) {
       if (!prefs.popups) return;
@@ -149,7 +149,7 @@
       toastTimer = setTimeout(() => toast.classList.remove("show"), 4000);
     }
 
-    //add notification
+    //add
     function addNotification(type, title, text) {
       if (!prefs[type]) return;
       notifications.unshift({ id: Date.now(), type, title, text, time: "Just now", read: false });
@@ -180,7 +180,7 @@
       addNotification("status", title, text);
     });
 
-    //demo buttons on/off
+    //demo toggle
     function updateDemoButtons() {
       simQueueBtn.disabled = !prefs.queue;
       simStatusBtn.disabled = !prefs.status;
@@ -194,7 +194,7 @@
       render();
     });
 
-    //settings form
+    //form
     const form = document.getElementById("prefs-form");
     const queueBox = document.getElementById("pref-queue");
     const statusBox = document.getElementById("pref-status");
@@ -204,7 +204,7 @@
     const spotsError = document.getElementById("spots-error");
     const successMsg = document.getElementById("prefs-success");
 
-    //fill form
+    //fill
     function fillForm() {
       queueBox.checked = prefs.queue;
       statusBox.checked = prefs.status;
@@ -212,7 +212,7 @@
       popupsBox.checked = prefs.popups;
     }
 
-    //show error
+    //error
     function setError(input, errorEl, message) {
       errorEl.textContent = message;
       if (input) {
@@ -221,7 +221,7 @@
       }
     }
 
-    //validation
+    //validate
     function validate() {
       let valid = true;
 
@@ -250,7 +250,7 @@
       return valid;
     }
 
-    //save settings
+    //save
     form.addEventListener("submit", e => {
       e.preventDefault();
       successMsg.hidden = true;
@@ -268,7 +268,7 @@
       successMsg.hidden = false;
     });
 
-    //hide saved message
+    //hide saved
     form.addEventListener("input", () => { successMsg.hidden = true; });
 
     //start

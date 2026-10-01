@@ -40,7 +40,9 @@ function updateNavBadge() {
 //nav links
 const navLinks = [
   { href: "index.html",         text: "Home" },
-  { href: "Notifications.html", text: "Notifications", badge: true }
+  { href: "Notifications.html", text: "Notifications", badge: true },
+  { href: "login.html",         text: "Login",    button: "login" },
+  { href: "register.html",      text: "Register", button: "register" }
 ];
 
 const currentPage = location.pathname.split("/").pop() || "index.html";
@@ -48,14 +50,22 @@ const currentPage = location.pathname.split("/").pop() || "index.html";
 //nav bar
 document.getElementById("nav-placeholder").innerHTML = `
   <nav class="navbar">
-    <a class="brand" href="index.html"><img src="brain-logo-transparent.png" alt="" /> Walk-In Psychiatric Clinic</a>
-    <ul>
-      ${navLinks.map(link => `
-        <li><a href="${link.href}" class="${link.href === currentPage ? "active" : ""}">
-          ${link.text}${link.badge ? '<span id="nav-notif-badge" class="nav-badge" hidden></span>' : ""}
-        </a></li>
-      `).join("")}
-    </ul>
+    <div class="nav-inner">
+      <a class="brand" href="index.html">
+        <img src="brain-logo.png" alt="" />
+        <span class="brand-name">Radiant Mind</span>
+        <span class="brand-sub">Walk-In Psychiatry Clinic</span>
+      </a>
+      <ul>
+        ${navLinks.map(link => {
+          const classes = [];
+          if (link.button) classes.push("nav-btn", link.button);
+          if (link.href === currentPage) classes.push("active");
+          const badge = link.badge ? '<span id="nav-notif-badge" class="nav-badge" hidden></span>' : "";
+          return `<li><a href="${link.href}" class="${classes.join(" ")}">${link.text}${badge}</a></li>`;
+        }).join("")}
+      </ul>
+    </div>
   </nav>`;
 
 updateNavBadge();
