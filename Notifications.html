@@ -1,47 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Notifications | Walk-In Psychiatric Clinic</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div id="nav-placeholder"></div>
-  <script src="navbar.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications | Walk-In Psychiatry Clinic</title>
+  <style>
+    :root {
+      --blue: #A1CEFA;
+      --purple: #B9B0D9;
+      --blue-soft: #E6F1FD;
+      --purple-soft: #EEEBF7;
+      --ink: #2A2D3E;
+      --muted: #5B6075;
+      --bg: #F6F7FB;
+      --white: #FFFFFF;
+      --line: #E4E6EF;
+    }
 
-  <main>
-    <div class="notif-header">
-      <h1>Notifications <span class="badge">2</span></h1>
-      <a href="#">Mark all as read</a>
-    </div>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <ul class="notif-list">
-      <li class="notif unread">
-        <span class="dot"></span>
-        <div>
-          <p class="notif-title">You&rsquo;re next in line</p>
-          <p class="notif-text">A provider will be ready for you in about 5 minutes.</p>
-        </div>
-        <span class="notif-time">2 min ago</span>
-      </li>
-      <li class="notif unread">
-        <span class="dot"></span>
-        <div>
-          <p class="notif-title">Check-in confirmed</p>
-          <p class="notif-text">You&rsquo;re #3 in line. Estimated wait is 25 minutes.</p>
-        </div>
-        <span class="notif-time">20 min ago</span>
-      </li>
-      <li class="notif">
-        <span class="dot"></span>
-        <div>
-          <p class="notif-title">Visit summary available</p>
-          <p class="notif-text">Notes from your last visit are ready to view.</p>
-        </div>
-        <span class="notif-time">Last week</span>
-      </li>
-    </ul>
-  </main>
-</body>
-</html>
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    /* ---------- Nav (swap for your shared nav bar) ---------- */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      height: 76px;
+      background: var(--white);
+      border-bottom: 3px solid var(--blue);
+    }
+    .logo { font-size: 1.6rem; font-weight: 700; color: var(--ink); text-decoration: none; }
+    .logo span { color: var(--purple); }
+    .nav-links { display: flex; align-items: center; gap: 28px; list-style: none; }
+    .nav-links a { color: var(--ink); text-decoration: none; font-size: 1.1rem; }
+    .nav-links a.active { font-weight: 600; border-bottom: 3px solid var(--purple); padding-bottom: 4px; }
+    .nav-btn {
+      padding: 12px 28px;
+      border-radius: 8px;
+      background: var(--purple);
+      font-weight: 500;
+    }
+
+    /* ---------- Page ---------- */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .page-head h1 { font-size: 2.2rem; line-height: 1.2; }
+    .page-head p { color: var(--muted); margin-top: 6px; }
+
+    .btn {
+      font: inherit;
+      border: none;
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .btn-blue { background: var(--purple); }
+    .btn-blue:disabled { opacity: .5; cursor: default; }
+    .btn:focus-visible, .tab:focus-visible, .icon-btn:focus-visible {
+      outline: 3px solid var(--ink);
+      outline-offset: 2px;
+    }
+
+    /* Filter tabs */
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .tab {
+      font: inherit;
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--ink);
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .tab[aria-pressed="true"] { background: var(--purple); border-color: var(--purple); font-weight: 600; }
+
+    /* Notification list, styled like the homepage cards */
+    .panel {
+      background: var(--white);
+      border-radius: 12px;
+      border-top: 5px solid var(--blue);
+      box-shadow: 0 2px 10px rgba(42, 45, 62, .06);
+      overflow: hidden;
+    }
+    .list { list-style: none; }
+
+    .item {
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      gap: 16px;
+      align-items: start;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+    }
+    .item:last-child { border-bottom: none; }
+    .item.unread { background: #FBFAFD; }
+    .item.unread::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: var(--purple);
+    }
+
+    .icon {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+    }
+    .icon svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon.appointments { background: var(--purple-soft); }
+    .icon.messages { background: var(--purple-soft); }
+    .icon.account { background: var(--purple-soft); }
+
+    .item h2 { font-size: 1.05rem; font-weight: 600; }
+    .item.unread h2::after {
+      content: "";
+      display: inline-block;
+      width: 8px; height: 8px;
+      margin-left: 8px;
+      border-radius: 50%;
+      background: #8E82C4;
+      vertical-align: middle;
+    }
+    .item p { color: var(--muted); margin-top: 2px; }
+    .item time { display: block; font-size: .875rem; color: var(--muted); margin-top: 8px; }
+
+    .actions { display: flex; gap: 4px; }
+    .icon-btn {
+      font: inherit;
+      font-size: .875rem;
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: var(--bg); color: var(--ink); }
+
+    .empty {
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--muted);
+    }
+    .empty h2 { color: var(--ink); font-size: 1.2rem; margin-bottom: 4px; }
+
+    @media (max-width: 640px) {
+      .navbar { padding: 0 16px; }
+      .logo { font-size: 1.2rem; }
+      .nav-links { gap: 14px; }
+      .nav-links a { font-size: .95rem; }
+      .nav-btn { padding: 8px 14px; }
+      .page-head h1 { font-size: 1.7rem; }
