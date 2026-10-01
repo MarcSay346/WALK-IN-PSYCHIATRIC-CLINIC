@@ -1,177 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Notifications | Walk-In Psychiatry Clinic</title>
-  <style>
-    :root {
-      --blue: #A1CEFA;
-      --purple: #B9B0D9;
-      --blue-soft: #E6F1FD;
-      --purple-soft: #EEEBF7;
-      --ink: #2A2D3E;
-      --muted: #5B6075;
-      --bg: #F6F7FB;
-      --white: #FFFFFF;
-      --line: #E4E6EF;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notifications | Radiant Mind</title>
+  <link rel="icon" href="brain-logo.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!--nav-->
+  <div id="nav-placeholder"></div>
+  <script src="navbar.js"></script>
+
+  <main>
+    <!--header-->
+    <div class="notif-header">
+      <h1>Notifications <span class="badge" id="unread-badge" hidden></span></h1>
+      <button class="link-btn" id="mark-all">Mark all as read</button>
+    </div>
+
+    <!--tabs-->
+    <div class="tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="queue">Queue updates</button>
+      <button class="tab" data-filter="status">Status changes</button>
+    </div>
+
+    <!--list-->
+    <ul class="notif-list" id="notif-list"></ul>
+
+    <!--demo-->
+    <div class="demo">
+      <span>Demo:</span>
+      <button class="btn-small" id="sim-queue">Simulate queue update</button>
+      <button class="btn-small" id="sim-status">Simulate status change</button>
+      <button class="link-btn" id="reset">Reset</button>
+    </div>
+
+    <!--form-->
+    <section class="settings">
+      <h2>Notification settings</h2>
+      <form id="prefs-form" novalidate>
+        <fieldset>
+          <legend>Notify me about</legend>
+          <label class="check"><input type="checkbox" id="pref-queue" /> Queue updates</label>
+          <label class="check"><input type="checkbox" id="pref-status" /> Status changes</label>
+          <p class="error" id="types-error"></p>
+        </fieldset>
+
+        <label for="pref-spots">Alert me when I'm within this many spots of the front (1&ndash;10)</label>
+        <input type="number" id="pref-spots" min="1" max="10" step="1" aria-describedby="spots-error" />
+        <p class="error" id="spots-error"></p>
+
+        <label class="check"><input type="checkbox" id="pref-popups" /> Show pop-up alerts</label>
+
+        <button type="submit" class="btn-small">Save settings</button>
+        <p class="success" id="prefs-success" hidden>Settings saved.</p>
+      </form>
+    </section>
+  </main>
+
+  <!--popup-->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    //settings
+    const PREFS_KEY = "clinicNotifPrefs";
+    const defaultPrefs = { queue: true, status: true, spots: 3, popups: true };
+
+    function loadPrefs() {
+      try {
+        const saved = localStorage.getItem(PREFS_KEY);
+        if (saved) return { ...defaultPrefs, ...JSON.parse(saved) };
+      } catch (e) {}
+      return { ...defaultPrefs };
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    let prefs = loadPrefs();
 
-    body {
-      font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      line-height: 1.5;
-    }
+    //list
+    let notifications = loadNotifications();
+    let currentFilter = "all";
 
-    /* ---------- Nav (swap for your shared nav bar) ---------- */
-    .navbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 28px;
-      height: 76px;
-      background: var(--white);
-      border-bottom: 3px solid var(--blue);
-    }
-    .logo { font-size: 1.6rem; font-weight: 700; color: var(--ink); text-decoration: none; }
-    .logo span { color: var(--purple); }
-    .nav-links { display: flex; align-items: center; gap: 28px; list-style: none; }
-    .nav-links a { color: var(--ink); text-decoration: none; font-size: 1.1rem; }
-    .nav-links a.active { font-weight: 600; border-bottom: 3px solid var(--purple); padding-bottom: 4px; }
-    .nav-btn {
-      padding: 12px 28px;
-      border-radius: 8px;
-      background: var(--purple);
-      font-weight: 500;
-    }
+    const listEl = document.getElementById("notif-list");
+    const unreadBadge = document.getElementById("unread-badge");
+    const labels = { queue: "Queue update", status: "Status change" };
 
-    /* ---------- Page ---------- */
-    main {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 48px 24px 72px;
-    }
+    //render
+    function render() {
+      const shown = notifications.filter(n => currentFilter === "all" || n.type === currentFilter);
 
-    .page-head {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 24px;
-    }
-    .page-head h1 { font-size: 2.2rem; line-height: 1.2; }
-    .page-head p { color: var(--muted); margin-top: 6px; }
+      if (shown.length === 0) {
+        listEl.innerHTML = '<li class="empty">No notifications here yet.</li>';
+      } else {
+        listEl.innerHTML = shown.map(n => `
+          <li class="notif ${n.read ? "" : "unread"}" data-id="${n.id}">
+            <span class="dot"></span>
+            <div>
+              <span class="tag ${n.type}">${labels[n.type]}</span>
+              <p class="notif-title">${n.title}</p>
+              <p class="notif-text">${n.text}</p>
+            </div>
+            <span class="notif-time">${n.time}</span>
+          </li>`).join("");
+      }
 
-    .btn {
-      font: inherit;
-      border: none;
-      cursor: pointer;
-      border-radius: 8px;
-      padding: 10px 20px;
-      font-weight: 600;
-      color: var(--ink);
-    }
-    .btn-blue { background: var(--purple); }
-    .btn-blue:disabled { opacity: .5; cursor: default; }
-    .btn:focus-visible, .tab:focus-visible, .icon-btn:focus-visible {
-      outline: 3px solid var(--ink);
-      outline-offset: 2px;
+      const count = unreadCount(notifications);
+      unreadBadge.textContent = count;
+      unreadBadge.hidden = count === 0;
+
+      saveNotifications(notifications);
+      updateNavBadge();
     }
 
-    /* Filter tabs */
-    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-    .tab {
-      font: inherit;
-      border: 1px solid var(--line);
-      background: var(--white);
-      color: var(--ink);
-      padding: 8px 16px;
-      border-radius: 999px;
-      cursor: pointer;
-    }
-    .tab[aria-pressed="true"] { background: var(--purple); border-color: var(--purple); font-weight: 600; }
+    //read one
+    listEl.addEventListener("click", e => {
+      const item = e.target.closest(".notif");
+      if (!item) return;
+      const n = notifications.find(n => n.id === Number(item.dataset.id));
+      if (n) n.read = true;
+      render();
+    });
 
-    /* Notification list, styled like the homepage cards */
-    .panel {
-      background: var(--white);
-      border-radius: 12px;
-      border-top: 5px solid var(--blue);
-      box-shadow: 0 2px 10px rgba(42, 45, 62, .06);
-      overflow: hidden;
-    }
-    .list { list-style: none; }
+    //read all
+    document.getElementById("mark-all").addEventListener("click", () => {
+      notifications.forEach(n => n.read = true);
+      render();
+    });
 
-    .item {
-      display: grid;
-      grid-template-columns: 44px 1fr auto;
-      gap: 16px;
-      align-items: start;
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--line);
-      position: relative;
-    }
-    .item:last-child { border-bottom: none; }
-    .item.unread { background: #FBFAFD; }
-    .item.unread::before {
-      content: "";
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 4px;
-      background: var(--purple);
+    //tabs
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        currentFilter = tab.dataset.filter;
+        render();
+      });
+    });
+
+    //popup
+    let toastTimer;
+    function showToast(label, title) {
+      if (!prefs.popups) return;
+      const toast = document.getElementById("toast");
+      toast.innerHTML = `<strong>${label}</strong><br>${title}`;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 4000);
     }
 
-    .icon {
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
+    //add
+    function addNotification(type, title, text) {
+      if (!prefs[type]) return;
+      notifications.unshift({ id: Date.now(), type, title, text, time: "Just now", read: false });
+      render();
+      showToast(labels[type], title);
     }
-    .icon svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .icon.appointments { background: var(--purple-soft); }
-    .icon.messages { background: var(--purple-soft); }
-    .icon.account { background: var(--purple-soft); }
 
-    .item h2 { font-size: 1.05rem; font-weight: 600; }
-    .item.unread h2::after {
-      content: "";
-      display: inline-block;
-      width: 8px; height: 8px;
-      margin-left: 8px;
-      border-radius: 50%;
-      background: #8E82C4;
-      vertical-align: middle;
+    //demo
+    const sampleStatus = [
+      ["Status changed: In session", "Your provider has started your session in Room 3."],
+      ["Status changed: Ready to be seen", "Please head to the front desk."],
+      ["Status changed: Visit completed", "Thanks for visiting. Take care."]
+    ];
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+    const simQueueBtn = document.getElementById("sim-queue");
+    const simStatusBtn = document.getElementById("sim-status");
+
+    simQueueBtn.addEventListener("click", () => {
+      const position = Math.floor(Math.random() * prefs.spots) + 1;
+      addNotification("queue",
+        position === 1 ? "You're next in line" : `You moved up to #${position}`,
+        `You're within your alert range of ${prefs.spots} spot${prefs.spots === 1 ? "" : "s"}.`);
+    });
+
+    simStatusBtn.addEventListener("click", () => {
+      const [title, text] = pick(sampleStatus);
+      addNotification("status", title, text);
+    });
+
+    //demo toggle
+    function updateDemoButtons() {
+      simQueueBtn.disabled = !prefs.queue;
+      simStatusBtn.disabled = !prefs.status;
+      simQueueBtn.title = prefs.queue ? "" : "Queue updates are turned off in settings";
+      simStatusBtn.title = prefs.status ? "" : "Status changes are turned off in settings";
     }
-    .item p { color: var(--muted); margin-top: 2px; }
-    .item time { display: block; font-size: .875rem; color: var(--muted); margin-top: 8px; }
 
-    .actions { display: flex; gap: 4px; }
-    .icon-btn {
-      font: inherit;
-      font-size: .875rem;
-      background: none;
-      border: none;
-      color: var(--muted);
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
+    //reset
+    document.getElementById("reset").addEventListener("click", () => {
+      notifications = defaultNotifications.map(n => ({ ...n }));
+      render();
+    });
+
+    //form
+    const form = document.getElementById("prefs-form");
+    const queueBox = document.getElementById("pref-queue");
+    const statusBox = document.getElementById("pref-status");
+    const spotsInput = document.getElementById("pref-spots");
+    const popupsBox = document.getElementById("pref-popups");
+    const typesError = document.getElementById("types-error");
+    const spotsError = document.getElementById("spots-error");
+    const successMsg = document.getElementById("prefs-success");
+
+    //fill
+    function fillForm() {
+      queueBox.checked = prefs.queue;
+      statusBox.checked = prefs.status;
+      spotsInput.value = prefs.spots;
+      popupsBox.checked = prefs.popups;
     }
-    .icon-btn:hover { background: var(--bg); color: var(--ink); }
 
-    .empty {
-      text-align: center;
-      padding: 56px 24px;
-      color: var(--muted);
+    //error
+    function setError(input, errorEl, message) {
+      errorEl.textContent = message;
+      if (input) {
+        input.classList.toggle("invalid", message !== "");
+        input.setAttribute("aria-invalid", message !== "");
+      }
     }
-    .empty h2 { color: var(--ink); font-size: 1.2rem; margin-bottom: 4px; }
 
-    @media (max-width: 640px) {
-      .navbar { padding: 0 16px; }
-      .logo { font-size: 1.2rem; }
-      .nav-links { gap: 14px; }
-      .nav-links a { font-size: .95rem; }
-      .nav-btn { padding: 8px 14px; }
-      .page-head h1 { font-size: 1.7rem; }
+    //validate
+    function validate() {
+      let valid = true;
+
+      if (!queueBox.checked && !statusBox.checked) {
+        setError(null, typesError, "Choose at least one type of notification.");
+        valid = false;
+      } else {
+        setError(null, typesError, "");
+      }
+
+      const raw = spotsInput.value.trim();
+      const num = Number(raw);
+      if (raw === "") {
+        setError(spotsInput, spotsError, "Enter a number of spots.");
+        valid = false;
+      } else if (!Number.isInteger(num)) {
+        setError(spotsInput, spotsError, "Use a whole number, like 3.");
+        valid = false;
+      } else if (num < 1 || num > 10) {
+        setError(spotsInput, spotsError, "Enter a number from 1 to 10.");
+        valid = false;
+      } else {
+        setError(spotsInput, spotsError, "");
+      }
+
+      return valid;
+    }
+
+    //save
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      successMsg.hidden = true;
+      if (!validate()) return;
+
+      prefs = {
+        queue: queueBox.checked,
+        status: statusBox.checked,
+        spots: Number(spotsInput.value),
+        popups: popupsBox.checked
+      };
+      try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {}
+
+      updateDemoButtons();
+      successMsg.hidden = false;
+    });
+
+    //hide saved
+    form.addEventListener("input", () => { successMsg.hidden = true; });
+
+    //start
+    fillForm();
+    updateDemoButtons();
+    render();
+  </script>
+</body>
+</html>
