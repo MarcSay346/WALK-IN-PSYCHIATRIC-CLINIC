@@ -1,1 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notifications | Walk-In Psychiatric Clinic</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <script src="navbar.js"></script>
 
+  <main>
+    <div class="notif-header">
+      <h1>Notifications <span class="badge">2</span></h1>
+      <a href="#">Mark all as read</a>
+    </div>
+
+    <ul class="notif-list">
+      <li class="notif unread">
+        <span class="dot"></span>
+        <div>
+          <p class="notif-title">You&rsquo;re next in line</p>
+          <p class="notif-text">A provider will be ready for you in about 5 minutes.</p>
+        </div>
+        <span class="notif-time">2 min ago</span>
+      </li>
+      <li class="notif unread">
+        <span class="dot"></span>
+        <div>
+          <p class="notif-title">Check-in confirmed</p>
+          <p class="notif-text">You&rsquo;re #3 in line. Estimated wait is 25 minutes.</p>
+        </div>
+        <span class="notif-time">20 min ago</span>
+      </li>
+      <li class="notif">
+        <span class="dot"></span>
+        <div>
+          <p class="notif-title">Visit summary available</p>
+          <p class="notif-text">Notes from your last visit are ready to view.</p>
+        </div>
+        <span class="notif-time">Last week</span>
+      </li>
+    </ul>
+  </main>
+</body>
+</html>
