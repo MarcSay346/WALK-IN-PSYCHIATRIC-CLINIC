@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Service Management | Radiant Mind</title>
+  <link rel="icon" href="brain-logo.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">
+        <img src="brain-logo.png" alt="">
+        <span class="brand-name">Radiant Mind</span>
+        <span class="brand-sub">Walk-In Psychiatry Clinic</span>
+      </a>
+      <ul>
+        <li><a href="admin-dashboard.html">Admin Dashboard</a></li>
+        <li><a class="active" href="admin-services.html">Services</a></li>
+        <li><a href="admin-queue.html">Queue</a></li>
+        <li><a href="index.html">Home</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <header class="page-heading">
+      <div><h1>Service Management</h1><p>Create a new service or edit an existing one.</p></div>
+      <a class="admin-btn secondary" href="admin-dashboard.html">Back to Dashboard</a>
+    </header>
+
+    <div class="two-columns">
+      <section class="admin-panel">
+        <h2 id="formTitle">Create Service</h2>
+        <form id="serviceForm" novalidate>
+          <input type="hidden" id="editingRow">
+          <label for="serviceName">Service Name *</label>
+          <input id="serviceName" type="text" maxlength="100" required>
+          <small>Required, maximum 100 characters.</small>
+
+          <label for="serviceDescription">Description *</label>
+          <textarea id="serviceDescription" rows="4" required></textarea>
+
+          <label for="serviceDuration">Expected Duration (minutes) *</label>
+          <input id="serviceDuration" type="number" min="1" step="1" required>
+
+          <label for="servicePriority">Priority Level *</label>
+          <select id="servicePriority" required>
+            <option value="">Choose one</option><option>Low</option><option>Medium</option><option>High</option>
+          </select>
+
+          <p class="error" id="serviceError" role="alert"></p>
+          <div class="button-row">
+            <button class="admin-btn" type="submit">Save Service</button>
+            <button class="admin-btn secondary" id="clearServiceForm" type="button">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-panel">
+        <h2>Current Services</h2>
+        <div class="table-wrap">
+          <table id="serviceTable">
+            <thead><tr><th>Service</th><th>Description</th><th>Minutes</th><th>Priority</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td class="name">Dr. Nate</td><td class="description">General counseling visit</td><td class="duration">60</td><td class="priority">High</td><td><button class="admin-btn small edit-service">Edit</button></td></tr>
+              <tr><td class="name">Dr. Valdez</td><td class="description">General counseling visit</td><td class="duration">45</td><td class="priority">Medium</td><td><button class="admin-btn small edit-service">Edit</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="message" id="serviceMessage" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

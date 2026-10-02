@@ -1,0 +1,234 @@
+* {
+  box-sizing: border-box;
+}
+
+.admin-main {
+  max-width: 1200px;
+}
+
+/* Page heading */
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.page-heading h1 {
+  margin: 0 0 .4rem;
+}
+
+.page-heading p,
+.admin-panel p {
+  color: var(--muted);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+
+/* Main content */
+.admin-panel {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 10px;
+  border-top: 4px solid var(--purple);
+  box-shadow: 0 2px 10px rgba(42, 45, 62, .08);
+}
+
+.admin-panel h2 {
+  margin-top: 0;
+}
+
+.two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: .8rem .7rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e6ec;
+}
+
+th {
+  background: var(--blue-light);
+}
+
+.service-name,
+.name {
+  font-weight: 700;
+}
+
+/* Buttons */
+.admin-btn {
+  display: inline-block;
+  padding: .7rem 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--blue);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+}
+
+.admin-btn:hover {
+  filter: brightness(.95);
+}
+
+.admin-btn.secondary,
+.admin-btn.small {
+  background: var(--purple-light);
+}
+
+.admin-btn.small {
+  padding: .45rem .65rem;
+  font-size: .85rem;
+}
+
+.admin-btn.danger {
+  background: #f7dddd;
+  color: #8b2222;
+}
+
+.admin-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* Queue status */
+.status {
+  padding: .25rem .65rem;
+  border-radius: 999px;
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.status.open {
+  background: #ddf2e1;
+  color: #286034;
+}
+
+.status.closed {
+  background: #f7dddd;
+  color: #8b2222;
+}
+
+/* Service form */
+#serviceForm label,
+.queue-tools label {
+  display: block;
+  margin: 1rem 0 .35rem;
+  font-weight: 600;
+}
+
+#serviceForm input,
+#serviceForm textarea,
+#serviceForm select,
+.queue-tools select {
+  width: 100%;
+  padding: .7rem;
+  border: 1px solid #d5d7e2;
+  border-radius: 6px;
+  background: white;
+  color: var(--text);
+  font: inherit;
+}
+
+#serviceForm small {
+  display: block;
+  margin-top: .25rem;
+  color: var(--muted);
+}
+
+#serviceForm .button-row {
+  margin-top: 1rem;
+}
+
+.error {
+  min-height: 1.2rem;
+  color: #b3261e !important;
+  font-weight: 600;
+}
+
+.message {
+  min-height: 1.2rem;
+  color: #2e6b3a !important;
+  font-weight: 600;
+}
+
+/* Queue page */
+.queue-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.queue-tools > div {
+  min-width: 250px;
+}
+
+.queue-tools label {
+  margin-top: 0;
+}
+
+.queue-tools p {
+  padding: .7rem 1rem;
+  background: var(--purple-light);
+  border-radius: 6px;
+}
+
+.queue-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.queue-footer .message {
+  margin: 0;
+}
+
+#emptyQueue {
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Smaller screens */
+@media (max-width: 850px) {
+  .two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .page-heading,
+  .queue-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand-sub {
+    display: none;
+  }
+}
