@@ -1,1 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radiant Mind Walk-In Psychiatry Clinic</title>
+  <style>
+    /*colors*/
+    :root {
+      --blue: #A1CEFA;
+      --purple: #B9B0D9;
+      --blue-light: #E3EFFC;
+      --purple-light: #EDEAF6;
+      --blue-dark: #2F5D8A;
+      --purple-dark: #4A4170;
+      --text: #2A2D3E;
+      --muted: #5B6075;
+      --bg: #F6F7FB;
+    }
 
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /*nav bar*/
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #fff;
+      border-bottom: 3px solid var(--blue);
+    }
+
+    .nav-inner {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 1.1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    /*logo*/
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .brand img { width: 44px; height: 44px; }
+    .brand-name { color: var(--text); }
+    .brand-sub  { color: var(--purple); }
+
+    /*nav links*/
+    .navbar ul {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+      margin: 0;
+      padding: 0;
+    }
+
+    .navbar ul a {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 1.05rem;
+    }
+    .navbar ul a:hover  { color: var(--purple-dark); }
+    .navbar ul a.active { color: var(--purple-dark); font-weight: 700; }
+
+    /*nav buttons*/
+    .navbar ul a.nav-btn {
+      display: inline-block;
+      padding: 0.85rem 1.75rem;
+      border-radius: 6px;
+      color: var(--text);
+    }
+    .navbar ul a.login    { background: var(--blue); }
+    .navbar ul a.register { background: var(--purple); }
+    .navbar ul a.nav-btn:hover { filter: brightness(0.95); color: var(--text); }
+
+    /*nav badge*/
+    .nav-badge {
+      display: inline-block;
+      min-width: 1.3rem;
+      margin-left: 0.35rem;
+      padding: 0 0.4rem;
+      border-radius: 999px;
+      background: var(--purple);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1.3rem;
+      text-align: center;
+    }
+
+    /*page*/
+    main {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 4rem;
+    }
+
+    h1 { color: var(--text); font-weight: 700; margin-top: 0; }
+    h2 { color: var(--text); font-size: 1.3rem; margin-top: 0; }
+    a  { color: var(--blue-dark); }
+
+    /*grid cards & widgets*/
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      padding: 1.75rem;
+      border-radius: 10px;
+      border-top: 4px solid var(--purple);
+      box-shadow: 0 2px 10px rgba(42, 45, 62, 0.06);
+    }
+
+    .card.blue-border { border-top-color: var(--blue-dark); }
+
+    .card p { color: var(--muted); line-height: 1.6; margin-bottom: 1.25rem; }
+
+    /*table layout for history*/
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(42, 45, 62, 0.06);
+      border-top: 4px solid var(--purple);
+    }
+
+    .history-table th, .history-table td {
+      padding: 1rem 1.25rem;
+      text-align: left;
+      border-bottom: 1px solid #ECEDF3;
+    }
+
+    .history-table th {
+      background: var(--purple-light);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .history-table tr:last-child td { border-bottom: none; }
+
+    /*settings / forms style integration*/
+    .settings {
+      margin-top: 1rem;
+      padding: 2rem 2.25rem;
+      background: #fff;
+      border-radius: 10px;
+      border-top: 4px solid var(--purple);
+      box-shadow: 0 2px 10px rgba(42, 45, 62, 0.06);
+      max-width: 560px;
+    }
+
+    .settings fieldset { border: none; padding: 0; margin: 0 0 1rem; }
+    .settings legend { font-weight: 600; margin-bottom: 0.4rem; }
+    .settings label { display: block; font-weight: 500; margin-bottom: 0.4rem; }
+    
+    .settings select, .settings input[type="text"], .settings input[type="email"], .settings input[type="number"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.6rem 0.7rem;
+      border: 1px solid #D5D7E2;
+      border-radius: 6px;
+      font: inherit;
+      background: #fff;
+    }
+    .settings select:focus, .settings input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-light); }
+    .settings input.invalid, .settings select.invalid { border-color: #B3261E; }
+
+    .error { color: #B3261E; font-size: 0.9rem; margin: 0.3rem 0 0.75rem; min-height: 1.2em; }
+    .success { color: #2E6B3A; font-weight: 600; margin: 0.75rem 0 0; }
+
+    .btn-small {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--purple);
+      color: var(--text);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-small:hover { filter: brightness(0.95); }
+    .btn-small:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-blue { background: var(--blue); }
+
+    /*toast notification banner*/
+    .toast {
+      position: fixed;
+      right: 1.5rem;
+      bottom: 1.5rem;
+      max-width: 320px;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      background: #fff;
+      border-top: 4px solid var(--purple);
+      box-shadow: 0 6px 20px rgba(42, 45, 62, 0.15);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast strong { color: var(--text); }
+
+    @media (max-width: 700px) {
+      .nav-inner { padding: 0.9rem 1rem; }
+      .brand { font-size: 1.25rem; }
+      .brand img { width: 36px; height: 36px; }
+      .navbar ul { gap: 1rem; flex-wrap: wrap; }
+      .history-table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Placeholder Container -->
+  <div id="nav-placeholder"></div>
+
+  <main>
+    <!-- Screen 1: User Dashboard -->
+    <section id="screen-dashboard">
+      <h1>User Dashboard</h1>
+      <p style="color: var(--muted); margin-bottom: 2rem;">Welcome back. Monitor your care path and queue status below.</p>
+      
+      <div class="dashboard-grid">
+        <div class="card blue-border">
+          <h2>Queue Overview</h2>
+          <p id="dash-queue-status">You are currently checked into: <strong>General Walk-In Consultation</strong>. Position: #3 in line.</p>
+          <button class="btn-small btn-blue" onclick="switchScreen('screen-status')">View Live Status</button>
+        </div>
+        
+        <div class="card">
+          <h2>Active Services</h2>
+          <p>Explore walk-in psychiatric evaluations, medication management slots, and urgent consults available today.</p>
+          <button class="btn-small" onclick="switchScreen('screen-join')">Join a Queue</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Notifications Summary</h2>
+        <p>You have unread updates regarding your wait time and provider availability.</p>
+        <a href="Notifications.html">Go to Notifications Center &rarr;</a>
+      </div>
+    </section>
+
+    <!-- Screen 2: Join Queue Screen -->
+    <section id="screen-join" hidden>
+      <h1>Join Queue</h1>
+      <div class="settings">
+        <h2>Select Service & Enter Details</h2>
+        <form id="join-form" novalidate>
+          <fieldset>
+            <label for="service-select">Select Service</label>
+            <select id="service-select" required>
+              <option value="">-- Choose a service --</option>
+              <option value="Initial Psychiatric Walk-In Evaluation">Initial Psychiatric Walk-In Evaluation (Est. wait: 25 min)</option>
+              <option value="Medication Management & Review">Medication Management & Review (Est. wait: 15 min)</option>
+              <option value="Urgent Consult">Urgent Consult (Est. wait: 5 min)</option>
+            </select>
+            <div id="service-error" class="error"></div>
+          </fieldset>
+
+          <fieldset>
+            <label for="patient-name">Full Name</label>
+            <input type="text" id="patient-name" required minlength="2" maxlength="50" placeholder="e.g., Jane Doe">
+            <div id="name-error" class="error"></div>
+          </fieldset>
+
+          <fieldset>
+            <label for="patient-contact">Contact Email or Phone</label>
+            <input type="text" id="patient-contact" required placeholder="name@example.com or phone">
+            <div id="contact-error" class="error"></div>
+          </fieldset>
+
+          <button type="submit" class="btn-small btn-blue">Confirm & Join Queue</button>
+          <button type="button" class="btn-small" style="background:transparent; color:var(--muted);" onclick="switchScreen('screen-dashboard')">Cancel</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Screen 3: Queue Status Screen -->
+    <section id="screen-status" hidden>
+      <h1>Queue Status</h1>
+      <div class="card blue-border" style="max-width: 560px; margin-top: 1.5rem;">
+        <h2 id="status-title">Live Position: #3 in Line</h2>
+        <p><strong>Service:</strong> <span id="status-service-name">Initial Psychiatric Walk-In Evaluation</span></p>
+        <p><strong>Estimated Wait Time:</strong> <span id="status-wait-time">15 minutes</span></p>
+        <p><strong>Current Status Phase:</strong> <span id="status-phase" style="font-weight: 600; color: var(--blue-dark);">Waiting for provider assignment</span></p>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button class="btn-small" style="background:#B3261E; color:#fff;" onclick="leaveQueue()">Leave Queue</button>
+          <button class="btn-small" onclick="switchScreen('screen-dashboard')">Back to Dashboard</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 4: History Screen -->
+    <section id="screen-history" hidden>
+      <h1>Visit & Queue History</h1>
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">Review logs of your past queues joined, dates, services, and outcomes.</p>
+      
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Service Name</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody">
+          <tr>
+            <td>Oct 1, 2026</td>
+            <td>Medication Management</td>
+            <td><span style="color: #2E6B3A; font-weight:600;">Completed Successfully</span></td>
+          </tr>
+          <tr>
+            <td>Sep 24, 2026</td>
+            <td>Initial Walk-In Evaluation</td>
+            <td><span style="color: #2E6B3A; font-weight:600;">Completed Successfully</span></td>
+          </tr>
+          <tr>
+            <td>Sep 10, 2026</td>
+            <td>Urgent Consult</td>
+            <td><span style="color: var(--muted);">Cancelled by user</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top: 1.5rem;">
+        <button class="btn-small" onclick="switchScreen('screen-dashboard')">Back to Dashboard</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Element -->
+  <div id="toast" class="toast">
+    <strong id="toast-title">Notification</strong>
+    <p id="toast-msg" style="margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem;"></p>
+  </div>
+
+  <script>
+    // Shared notification and nav scripting code matching design requirements
+    const NOTIF_KEY = "clinicNotifications";
+    
+    function loadNotifications() {
+      try {
+        const saved = localStorage.getItem(NOTIF_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return [];
+    }
+
+    function unreadCount(list) {
+      return list.filter(n => !n.read).length;
+    }
+
+    function updateNavBadge() {
+      const badge = document.getElementById("nav-notif-badge");
+      if (!badge) return;
+      const count = unreadCount(loadNotifications());
+      badge.textContent = count;
+      badge.hidden = count === 0;
+    }
+
+    const navLinks = [
+      { href: "index.html", text: "Dashboard" },
+      { href: "join.html", text: "Join Queue" },
+      { href: "status.html", text: "Queue Status" },
+      { href: "history.html", text: "History" },
+      { href: "Notifications.html", text: "Notifications", badge: true }
+    ];
+
+    // Build Navigation Bar Dynamically
+    document.getElementById("nav-placeholder").innerHTML = `
+      <nav class="navbar">
+        <div class="nav-inner">
+          <a class="brand" href="#" onclick="switchScreen('screen-dashboard'); return false;">
+            <img src="brain-logo.png" alt="" onerror="this.style.display='none'" />
+            <span class="brand-name">Radiant Mind</span>
+            <span class="brand-sub">Walk-In Psychiatry Clinic</span>
+          </a>
+          <ul>
+            <li><a href="#" onclick="switchScreen('screen-dashboard'); return false;" class="active">Dashboard</a></li>
+            <li><a href="#" onclick="switchScreen('screen-join'); return false;">Join Queue</a></li>
+            <li><a href="#" onclick="switchScreen('screen-status'); return false;">Status</a></li>
+            <li><a href="#" onclick="switchScreen('screen-history'); return false;">History</a></li>
+            <li><a href="Notifications.html">Notifications <span id="nav-notif-badge" class="nav-badge" hidden></span></a></li>
+          </ul>
+        </div>
+      </nav>`;
+    updateNavBadge();
+
+    // Client-side screen switcher simulator
+    function switchScreen(screenId) {
+      ['screen-dashboard', 'screen-join', 'screen-status', 'screen-history'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = (id !== screenId);
+      });
+      window.scrollTo(0, 0);
+    }
+
+    // Toast utility
+    function showToast(title, msg) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toast-title").textContent = title;
+      document.getElementById("toast-msg").textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3500);
+    }
+
+    // Validation & Join Form Handler
+    document.getElementById("join-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      let valid = true;
+
+      const service = document.getElementById("service-select");
+      const serviceErr = document.getElementById("service-error");
+      if (!service.value) {
+        service.classList.add("invalid");
+        serviceErr.textContent = "Please select a required service option.";
+        valid = false;
+      } else {
+        service.classList.remove("invalid");
+        serviceErr.textContent = "";
+      }
+
+      const name = document.getElementById("patient-name");
+      const nameErr = document.getElementById("name-error");
+      if (!name.value.trim() || name.value.length < 2 || name.value.length > 50) {
+        name.classList.add("invalid");
+        nameErr.textContent = "Name must be between 2 and 50 characters.";
+        valid = false;
+      } else {
+        name.classList.remove("invalid");
+        nameErr.textContent = "";
+      }
+
+      const contact = document.getElementById("patient-contact");
+      const contactErr = document.getElementById("contact-error");
+      if (!contact.value.trim()) {
+        contact.classList.add("invalid");
+        contactErr.textContent = "Contact field is required.";
+        valid = false;
+      } else {
+        contact.classList.remove("invalid");
+        contactErr.textContent = "";
+      }
+
+      if (valid) {
+        document.getElementById("status-service-name").textContent = service.value;
+        showToast("Success!", "You have successfully joined the queue.");
+        switchScreen('screen-status');
+      }
+    });
+
+    function leaveQueue() {
+      if (confirm("Are you sure you want to leave the queue?")) {
+        showToast("Queue Left", "You have been removed from the queue.");
+        switchScreen('screen-dashboard');
+      }
+    }
+  </script>
+</body>
+</html>
