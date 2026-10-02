@@ -276,9 +276,11 @@
             <label for="service-select">Select Service</label>
             <select id="service-select" required>
               <option value="">-- Choose a service --</option>
-              <option value="Initial Psychiatric Walk-In Evaluation">Initial Psychiatric Walk-In Evaluation (Est. wait: 25 min)</option>
+              
+              <option value="Psychiatric Walk-In Evaluation">Psychiatric Walk-In Evaluation (Est. wait: 25 min)</option>
               <option value="Medication Management & Review">Medication Management & Review (Est. wait: 15 min)</option>
               <option value="Urgent Consult">Urgent Consult (Est. wait: 5 min)</option>
+               <option value="Other">Other (Est. wait: 30 min)</option>
             </select>
             <div id="service-error" class="error"></div>
           </fieldset>
@@ -306,7 +308,7 @@
       <h1>Queue Status</h1>
       <div class="card blue-border" style="max-width: 560px; margin-top: 1.5rem;">
         <h2 id="status-title">Live Position: #3 in Line</h2>
-        <p><strong>Service:</strong> <span id="status-service-name">Initial Psychiatric Walk-In Evaluation</span></p>
+        <p><strong>Service:</strong> <span id="status-service-name"> Psychiatric Walk-In Evaluation</span></p>
         <p><strong>Estimated Wait Time:</strong> <span id="status-wait-time">15 minutes</span></p>
         <p><strong>Current Status Phase:</strong> <span id="status-phase" style="font-weight: 600; color: var(--blue-dark);">Waiting for provider assignment</span></p>
         
