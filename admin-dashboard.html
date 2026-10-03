@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Dashboard | Radiant Mind</title>
+  <link rel="icon" href="brain-logo.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">
+        <img src="brain-logo.png" alt="">
+        <span class="brand-name">Radiant Mind</span>
+        <span class="brand-sub">Walk-In Psychiatry Clinic</span>
+      </a>
+      <ul>
+        <li><a class="active" href="admin-dashboard.html">Admin Dashboard</a></li>
+        <li><a href="admin-services.html">Services</a></li>
+        <li><a href="admin-queue.html">Queue</a></li>
+        <li><a href="index.html">Home</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <header class="page-heading">
+      <div><h1>Admin Dashboard</h1><p>View services and quickly open or close a queue.</p></div>
+      <div class="button-row">
+        <a class="admin-btn secondary" href="admin-services.html">Manage Services</a>
+        <a class="admin-btn" href="admin-queue.html">Manage Queue</a>
+      </div>
+    </header>
+
+    <section class="admin-panel">
+      <h2>Current Services</h2>
+      <div class="table-wrap">
+        <table id="dashboardServiceTable">
+          <thead><tr><th>Service</th><th>Description</th><th>Duration</th><th>Queue Length</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr data-open="true">
+              <td class="service-name">Dr. Nate</td><td>General counseling visit</td><td>60 minutes</td><td>3</td>
+              <td><span class="status open">Open</span></td><td><button class="admin-btn small toggle-queue">Close Queue</button></td>
+            </tr>
+            <tr data-open="true">
+              <td class="service-name">Dr. Valdez</td><td>General counseling visit</td><td>45 minutes</td><td>2</td>
+              <td><span class="status open">Open</span></td><td><button class="admin-btn small toggle-queue">Close Queue</button></td>
+            </tr>
+            <tr data-open="false">
+              <td class="service-name">Dr. Cole</td><td>Follow-up visit</td><td>30 minutes</td><td>0</td>
+              <td><span class="status closed">Closed</span></td><td><button class="admin-btn small toggle-queue">Open Queue</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="message" id="dashboardMessage" aria-live="polite"></p>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

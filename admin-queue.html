@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Queue Management | Radiant Mind</title>
+  <link rel="icon" href="brain-logo.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">
+        <img src="brain-logo.png" alt="">
+        <span class="brand-name">Radiant Mind</span>
+        <span class="brand-sub">Walk-In Psychiatry Clinic</span>
+      </a>
+      <ul>
+        <li><a href="admin-dashboard.html">Admin Dashboard</a></li>
+        <li><a href="admin-services.html">Services</a></li>
+        <li><a class="active" href="admin-queue.html">Queue</a></li>
+        <li><a href="index.html">Home</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <header class="page-heading">
+      <div><h1>Queue Management</h1><p>Reorder, remove, or serve users in a selected queue.</p></div>
+      <a class="admin-btn secondary" href="admin-dashboard.html">Back to Dashboard</a>
+    </header>
+
+    <section class="admin-panel">
+      <div class="queue-tools">
+        <div><label for="queueService">Selected Service</label>
+          <select id="queueService"><option value="nate">Dr. Nate</option><option value="valdez">Dr. Valdez</option><option value="cole">Dr. Cole</option></select>
+        </div>
+        <p><strong id="queueCount">0</strong> people waiting</p>
+      </div>
+
+      <div class="table-wrap">
+        <table id="queueTable">
+          <thead><tr><th>Position</th><th>User</th><th>Check-in Time</th><th>Actions</th></tr></thead>
+          <tbody id="queueBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyQueue">No users are waiting for this service.</p>
+      <div class="queue-footer">
+        <button class="admin-btn" id="serveNextUser">Serve Next User</button>
+        <p class="message" id="queueMessage" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>
