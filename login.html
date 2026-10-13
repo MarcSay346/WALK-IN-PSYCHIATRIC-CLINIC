@@ -62,56 +62,71 @@
     <p>&copy; 2026 Walk-In Psychiatric Clinic. All rights reserved.</p>
   </footer>
 
-  <!-- Client-Side Validation Script -->
-  <script>
-    const form = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
+  
 
-    const emailError = document.getElementById('email-error');
-    const passwordError = document.getElementById('password-error');
-    const loginAlert = document.getElementById('login-alert');
+<script>
+  const form = document.getElementById('login-form');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const emailError = document.getElementById('email-error');
+  const passwordError = document.getElementById('password-error');
+  const loginAlert = document.getElementById('login-alert');
 
-    function validateEmail(email) {
-      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return re.test(String(email).toLowerCase());
-    }
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).toLowerCase());
+  }
 
-    form.addEventListener('submit', function (e) {
-      e.preventDefault(); // Prevent page refresh
-      let isValid = true;
+  function showError(input, errorEl, msg) {
+    input.classList.add('invalid');
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
 
-      // Validate Email
-      if (!validateEmail(emailInput.value.trim())) {
-        emailInput.classList.add('invalid');
-        emailError.style.display = 'block';
-        isValid = false;
-      } else {
-        emailInput.classList.remove('invalid');
-        emailError.style.display = 'none';
-      }
+  function clearError(input, errorEl) {
+    input.classList.remove('invalid');
+    errorEl.style.display = 'none';
+  }
 
-      // Validate Password
-      if (passwordInput.value.trim().length < 6) {
-        passwordInput.classList.add('invalid');
-        passwordError.style.display = 'block';
-        isValid = false;
-      } else {
-        passwordInput.classList.remove('invalid');
-        passwordError.style.display = 'none';
-      }
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    let isValid = true;
 
-      // If validation succeeds
-      if (isValid) {
+    if (!validateEmail(emailInput.value.trim())) {
+      showError(emailInput, emailError, 'Please enter a valid email address.');
+      isValid = false;
+    } else clearError(emailInput, emailError);
+
+    if (passwordInput.value.trim().length < 6) {
+      showError(passwordInput, passwordError, 'Password must be at least 6 characters long.');
+      isValid = false;
+    } else clearError(passwordInput, passwordError);
+
+    if (!isValid) return;
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailInput.value.trim(),
+          password: passwordInput.value
+        })
+      });
+
+      if (res.ok) {
+        const user = await res.json();
+        sessionStorage.setItem('patient', JSON.stringify(user));   // { patientId, firstName, lastName }
+        loginAlert.textContent = `Welcome, ${user.firstName}! Redirecting...`;
         loginAlert.style.display = 'block';
-        setTimeout(() => {
-          // Reset form after successful submission
-          form.reset();
-          loginAlert.style.display = 'none';
-        }, 3000);
+        setTimeout(() => { window.location.href = 'joinQueue.html'; }, 1500);
+      } else {
+        showError(passwordInput, passwordError, 'Incorrect email or password.');
       }
-    });
-  </script>
+    } catch (err) {
+      showError(passwordInput, passwordError, 'Cannot reach the server. Is the backend running?');
+    }
+  });
+</script>
 
 </body>
 </html>
