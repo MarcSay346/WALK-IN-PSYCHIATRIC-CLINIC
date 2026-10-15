@@ -54,7 +54,7 @@ document.getElementById("nav-placeholder").innerHTML = `
       <a class="brand" href="index.html">
         <img src="brain-logo.png" alt="" />
         <span class="brand-name">Radiant Mind</span>
-        <span class="brand-sub">Walk-In Psychiatry Clinic</span>
+        <span class="brand-sub">Walk-In Psychiatric Clinic</span>
       </a>
       <ul>
         ${navLinks.map(link => {
