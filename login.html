@@ -1,132 +1,98 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Radiant Mind Walk-In Psychiatric Clinic</title>
+  <title>Login | Radiant Mind</title>
   <link rel="icon" href="brain-logo.png" />
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-  <!-- Navigation Bar -->
-  <header class="navbar">
-  <div class="nav-inner">
-    <a href="index.html" class="brand">
-      <img src="brain-logo (1) (1).png" alt="">
-      <span class="brand-name">Radiant Mind</span><span class="brand-sub">Walk-In Psychiatric Clinic</span>
-    </a>
-    <ul>
-      <li><a href="index.html">Home</a></li>
-      <li><a href="notifications.html">Notifications<span class="nav-badge">2</span></a></li>
-      <li><a href="login.html" class="nav-btn login active">Login</a></li>
-      <li><a href="register.html" class="nav-btn register">Register</a></li>
-    </ul>
-  </div>
-</header>
-
+ 
+  <!-- Navigation Bar (built by navbar.js, same on every page) -->
+  <div id="nav-placeholder"></div>
+  <script src="navbar.js"></script>
+ 
   <main>
     <div class="auth-container">
       <h2>Patient Login</h2>
       <p class="subtitle">Access your clinic records and services</p>
-
+ 
       <div id="login-alert" class="alert-box alert-success">
         Login successful! Redirecting...
       </div>
-
+ 
       <form id="login-form" novalidate>
         <!-- Email / Username -->
         <div class="form-group">
           <label for="email">Email Address (Username)</label>
           <input type="email" id="email" placeholder="example@domain.com" required>
-          <span class="error-message" id="email-error">Please enter a valid email address.</span>
+          <span class="error-message" id="email-error"></span>
         </div>
-
+ 
         <!-- Password -->
         <div class="form-group">
           <label for="password">Password</label>
           <input type="password" id="password" placeholder="Enter your password" required>
-          <span class="error-message" id="password-error">Password must be at least 6 characters long.</span>
+          <span class="error-message" id="password-error"></span>
         </div>
-
+ 
         <button type="submit" class="btn btn-primary btn-full">Sign In</button>
       </form>
-
+ 
       <div class="auth-footer">
         Don't have an account? <a href="register.html">Register here</a>
       </div>
     </div>
   </main>
-
+ 
   <footer>
     <p>&copy; 2026 Walk-In Psychiatric Clinic. All rights reserved.</p>
   </footer>
-
-  
-
-<script>
-  const form = document.getElementById('login-form');
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const emailError = document.getElementById('email-error');
-  const passwordError = document.getElementById('password-error');
-  const loginAlert = document.getElementById('login-alert');
-
-  function validateEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).toLowerCase());
-  }
-
-  function showError(input, errorEl, msg) {
-    input.classList.add('invalid');
-    errorEl.textContent = msg;
-    errorEl.style.display = 'block';
-  }
-
-  function clearError(input, errorEl) {
-    input.classList.remove('invalid');
-    errorEl.style.display = 'none';
-  }
-
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    let isValid = true;
-
-    if (!validateEmail(emailInput.value.trim())) {
-      showError(emailInput, emailError, 'Please enter a valid email address.');
-      isValid = false;
-    } else clearError(emailInput, emailError);
-
-    if (passwordInput.value.trim().length < 6) {
-      showError(passwordInput, passwordError, 'Password must be at least 6 characters long.');
-      isValid = false;
-    } else clearError(passwordInput, passwordError);
-
-    if (!isValid) return;
-
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: emailInput.value.trim(),
-          password: passwordInput.value
-        })
-      });
-
-      if (res.ok) {
-        const user = await res.json();
-        sessionStorage.setItem('patient', JSON.stringify(user));   // { patientId, firstName, lastName }
-        loginAlert.textContent = `Welcome, ${user.firstName}! Redirecting...`;
+ 
+  <!-- Login logic + dummy data (this is what the unit tests cover) -->
+  <script src="auth.js"></script>
+ 
+  <script>
+    const loginForm = document.getElementById('login-form');
+    const loginEmail = document.getElementById('email');
+    const loginPassword = document.getElementById('password');
+    const loginEmailError = document.getElementById('email-error');
+    const loginPasswordError = document.getElementById('password-error');
+    const loginAlert = document.getElementById('login-alert');
+ 
+    function showFieldError(input, errorEl, msg) {
+      if (msg) {
+        input.classList.add('invalid');
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+      } else {
+        input.classList.remove('invalid');
+        errorEl.style.display = 'none';
+      }
+    }
+ 
+    loginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+ 
+      const result = loginUser(loginEmail.value, loginPassword.value);   // from auth.js
+ 
+      if (result.ok) {
+        showFieldError(loginEmail, loginEmailError, '');
+        showFieldError(loginPassword, loginPasswordError, '');
+        loginAlert.textContent = `Welcome, ${result.user.name}! Redirecting...`;
         loginAlert.style.display = 'block';
         setTimeout(() => { window.location.href = 'joinQueue.html'; }, 1500);
-      } else {
-        showError(passwordInput, passwordError, 'Incorrect email or password.');
+        return;
       }
-    } catch (err) {
-      showError(passwordInput, passwordError, 'Cannot reach the server. Is the backend running?');
-    }
-  });
-</script>
-
+ 
+      const errors = result.errors;
+      showFieldError(loginEmail, loginEmailError, errors.email || '');
+      showFieldError(loginPassword, loginPasswordError, errors.password || errors.form || '');
+    });
+  </script>
+ 
 </body>
 </html>
