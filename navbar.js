@@ -55,8 +55,14 @@ function logout() {
 // show: "in"  = only when logged in
 // show: "out" = only when logged out
 // no show     = always
+// Dashboard, Join Queue, Status and History are all sections of joinQueue.html;
+// the part after # picks which section opens.
 const navLinks = [
-  { href: "index.html",         text: "Home" },
+  { href: "index.html",               text: "Home",       show: "out" },
+  { href: "joinQueue.html#dashboard", text: "Dashboard",  show: "in" },
+  { href: "joinQueue.html#join",      text: "Join Queue", show: "in" },
+  { href: "joinQueue.html#status",    text: "Status",     show: "in" },
+  { href: "joinQueue.html#history",   text: "History",    show: "in" },
   { href: "Notifications.html", text: "Notifications", badge: true, show: "in" },
   { href: "login.html",         text: "Login",    button: "login",    show: "out" },
   { href: "register.html",      text: "Register", button: "register", show: "out" },
@@ -76,7 +82,7 @@ if (!loggedIn && protectedPages.includes(currentPage.toLowerCase())) {
 document.getElementById("nav-placeholder").innerHTML = `
   <nav class="navbar">
     <div class="nav-inner">
-      <a class="brand" href="index.html">
+      <a class="brand" href="${loggedIn ? "joinQueue.html#dashboard" : "index.html"}">
         <img src="brain-logo.png" alt="" />
         <span class="brand-name">Radiant Mind</span>
         <span class="brand-sub">Walk-In Psychiatric Clinic</span>
