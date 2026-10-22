@@ -1,54 +1,55 @@
-//notification data
-const NOTIF_KEY = "clinicNotifications";
-
-const defaultNotifications = [
-  { id: 1, type: "queue",  title: "You're next in line", text: "A provider will be ready for you in about 5 minutes.", time: "2 min ago", read: false },
-  { id: 2, type: "status", title: "Status changed: Ready to be seen", text: "Please head to the front desk when your name is called.", time: "3 min ago", read: false },
-  { id: 3, type: "queue",  title: "You moved up to #3", text: "Estimated wait is now 15 minutes.", time: "12 min ago", read: false },
-  { id: 4, type: "status", title: "Status changed: Checked in", text: "You're in the queue. Estimated wait is 25 minutes.", time: "20 min ago", read: true },
-  { id: 5, type: "status", title: "Status changed: Visit completed", text: "Your last visit was marked complete.", time: "Last week", read: true }
-];
-
-//load notifications
-function loadNotifications() {
-  try {
-    const saved = localStorage.getItem(NOTIF_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return defaultNotifications.map(n => ({ ...n }));
-}
-
-//save notifications
-function saveNotifications(list) {
-  try { localStorage.setItem(NOTIF_KEY, JSON.stringify(list)); } catch (e) {}
-}
-
-//count unread
-function unreadCount(list) {
-  return list.filter(n => !n.read).length;
-}
-
-//nav badge
-function updateNavBadge() {
-  const badge = document.getElementById("nav-notif-badge");
-  if (!badge) return;
-  const count = unreadCount(loadNotifications());
-  badge.textContent = count;
-  badge.hidden = count === 0;
-}
-
 //login state
-// auth.js saves the signed-in user under this key.
-// (Named differently from auth.js's USER_KEY so both files can load on one page.)
+// Works with either login style: localStorage "currentUser" or sessionStorage "patient"
+// (the C# /api/login response). Named "nav..." so they don't clash with other scripts.
 const NAV_USER_KEY = "currentUser";
 
+function navReadStored(storage, key) {
+  try {
+    const raw = storage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function navGetUser() {
+  return navReadStored(localStorage, NAV_USER_KEY) || navReadStored(sessionStorage, "patient");
+}
+
+// the id the backend uses for this user (patientId, id, userId or email)
+function getCurrentUserId() {
+  const user = navGetUser();
+  if (!user) return null;
+  const id = user.patientId ?? user.id ?? user.userId ?? user.email;
+  return id == null ? null : String(id);
+}
+
 function isLoggedIn() {
-  try { return localStorage.getItem(NAV_USER_KEY) !== null; } catch (e) { return false; }
+  return navGetUser() !== null;
 }
 
 function logout() {
-  try { localStorage.removeItem(NAV_USER_KEY); } catch (e) {}
+  try {
+    localStorage.removeItem(NAV_USER_KEY);
+    sessionStorage.removeItem("patient");
+  } catch (e) {}
   window.location.href = "login.html";
+}
+
+//nav badge (unread count comes from the backend)
+async function updateNavBadge() {
+  const badge = document.getElementById("nav-notif-badge");
+  const userId = getCurrentUserId();
+  if (!badge || !userId) return;
+  try {
+    const res = await fetch(`/api/notifications/${encodeURIComponent(userId)}/unread-count`);
+    if (!res.ok) return;
+    const { count } = await res.json();
+    badge.textContent = count;
+    badge.hidden = count === 0;
+  } catch (e) {
+    badge.hidden = true;   // backend not running
+  }
 }
 
 //nav links
