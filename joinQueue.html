@@ -242,6 +242,44 @@
       document.getElementById("patient-contact").value = currentUserInfo.email || "";
     }
 
+    // ----- queue events -> Notification + History modules (backend) -----
+    // The userId sent here MUST match the one Notifications.html loads
+    // (it requests /api/notifications/<userId>).
+    // Uses the same function as Notifications.html (defined in navbar.js),
+    // so both pages always agree on who the user is.
+    function getUserId() {
+      return getCurrentUserId();
+    }
+
+    // Reads the minutes out of the option text, e.g. "(Est. wait: 25 min)" -> 25
+    function getWaitMinutes(selectEl) {
+      const text = selectEl.options[selectEl.selectedIndex]?.text || "";
+      const match = text.match(/(\d+)\s*min/);
+      return match ? parseInt(match[1], 10) : 15;
+    }
+
+    // Sends one queue event: "joined", "position", "served" or "left"
+    async function sendQueueEvent(type, data) {
+      try {
+        const res = await fetch("/api/queue-events/" + type, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: getUserId(),
+            serviceName: data.serviceName,
+            position: data.position,
+            estimatedWaitMinutes: data.estimatedWaitMinutes
+          })
+        });
+        if (!res.ok) console.warn("Queue event '" + type + "' failed:", res.status, await res.text());
+      } catch (err) {
+        console.warn("Could not reach the server for queue event '" + type + "':", err);
+      }
+    }
+
+    // what the patient is currently queued for (used by Leave Queue)
+    let currentQueue = null;
+
     // ----- toast -----
     let joinToastTimer;
     function showToast(title, msg) {
@@ -254,7 +292,7 @@
     }
 
     // ----- join form validation -----
-    document.getElementById("join-form").addEventListener("submit", function (e) {
+    document.getElementById("join-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       let valid = true;
 
@@ -293,14 +331,27 @@
       }
 
       if (valid) {
+        const waitMinutes = getWaitMinutes(service);
+        currentQueue = { serviceName: service.value, position: 3, estimatedWaitMinutes: waitMinutes };
+
         document.getElementById("status-service-name").textContent = service.value;
+        document.getElementById("status-title").textContent = "Live Position: #" + currentQueue.position + " in Line";
+        document.getElementById("status-wait-time").textContent = waitMinutes + " minutes";
+
+        // tell the backend -> creates the "joined" notification + history entry
+        await sendQueueEvent("joined", currentQueue);
+
         showToast("Success!", "You have successfully joined the queue.");
         switchScreen("status");
       }
     });
 
-    function leaveQueue() {
+    async function leaveQueue() {
       if (confirm("Are you sure you want to leave the queue?")) {
+        if (currentQueue) {
+          await sendQueueEvent("left", currentQueue);
+          currentQueue = null;
+        }
         showToast("Queue Left", "You have been removed from the queue.");
         switchScreen("dashboard");
       }
