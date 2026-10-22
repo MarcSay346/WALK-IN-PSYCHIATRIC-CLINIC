@@ -26,15 +26,19 @@
       <button class="tab" data-filter="status">Status changes</button>
     </div>
 
-    <!--list-->
-    <ul class="notif-list" id="notif-list"></ul>
+    <!--list (loaded from the backend)-->
+    <ul class="notif-list" id="notif-list">
+      <li class="empty">Loading notifications…</li>
+    </ul>
 
-    <!--demo-->
+    <!--demo: sends queue events to the backend, which decides what notifications to create-->
     <div class="demo">
       <span>Demo:</span>
-      <button class="btn-small" id="sim-queue">Simulate queue update</button>
-      <button class="btn-small" id="sim-status">Simulate status change</button>
+      <button class="btn-small" id="sim-queue">Simulate joining a queue</button>
+      <button class="btn-small" id="sim-move">Simulate moving up</button>
+      <button class="btn-small" id="sim-status">Simulate being served</button>
       <button class="link-btn" id="reset">Reset</button>
+      <span id="demo-status" style="flex-basis: 100%;"></span>
     </div>
 
     <!--form-->
@@ -64,68 +68,114 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-    //settings
-    const PREFS_KEY = "clinicNotifPrefs";
-    const defaultPrefs = { queue: true, status: true, spots: 3, popups: true };
-
-    function loadPrefs() {
-      try {
-        const saved = localStorage.getItem(PREFS_KEY);
-        if (saved) return { ...defaultPrefs, ...JSON.parse(saved) };
-      } catch (e) {}
-      return { ...defaultPrefs };
-    }
-
-    let prefs = loadPrefs();
-
-    //list
-    let notifications = loadNotifications();
-    let currentFilter = "all";
+    // All data on this page comes from the C# backend (ClinicApi):
+    //   /api/notifications/...   Notification module
+    //   /api/queue-events/...    queue events that trigger notifications + history
+    const NOTIF_API = "/api/notifications";
+    const QUEUE_EVENTS_API = "/api/queue-events";
+    const notifUserId = getCurrentUserId();            // from navbar.js
+    const notifUserPath = encodeURIComponent(notifUserId || "");
 
     const listEl = document.getElementById("notif-list");
     const unreadBadge = document.getElementById("unread-badge");
+    const demoStatus = document.getElementById("demo-status");
     const labels = { queue: "Queue update", status: "Status change" };
 
-    //render
-    function render() {
-      const shown = notifications.filter(n => currentFilter === "all" || n.type === currentFilter);
+    let notifications = [];
+    let currentFilter = "all";
+    let prefs = { queueUpdates: true, statusChanges: true, alertWithinSpots: 3, popups: true };
 
-      if (shown.length === 0) {
-        listEl.innerHTML = '<li class="empty">No notifications here yet.</li>';
+    //api helper
+    async function api(url, options = {}) {
+      let res;
+      try {
+        res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...options });
+      } catch (e) {
+        const err = new Error("Can't reach the backend. Start it with dotnet run and open the site at http://localhost:5083.");
+        err.errors = {};
+        throw err;
+      }
+      let data = null;
+      try { data = await res.json(); } catch (e) {}
+      if (!res.ok) {
+        const errors = (data && data.errors) || {};
+        const err = new Error((data && data.error) || Object.values(errors)[0] || `Request failed (${res.status}).`);
+        err.status = res.status;
+        err.errors = errors;
+        throw err;
+      }
+      return data;
+    }
+
+    //helpers
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function timeAgo(iso) {
+      const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+      if (seconds < 60) return "Just now";
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} min ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hr ago`;
+      return new Date(iso).toLocaleDateString();
+    }
+
+    //render
+    function render(unread) {
+      if (notifications.length === 0) {
+        listEl.innerHTML = '<li class="empty">No notifications here yet. Try the demo buttons below.</li>';
       } else {
-        listEl.innerHTML = shown.map(n => `
+        listEl.innerHTML = notifications.map(n => `
           <li class="notif ${n.read ? "" : "unread"}" data-id="${n.id}">
             <span class="dot"></span>
             <div>
-              <span class="tag ${n.type}">${labels[n.type]}</span>
-              <p class="notif-title">${n.title}</p>
-              <p class="notif-text">${n.text}</p>
+              <span class="tag ${n.type}">${labels[n.type] || n.type}</span>
+              <p class="notif-title">${escapeHtml(n.title)}</p>
+              <p class="notif-text">${escapeHtml(n.message)}</p>
             </div>
-            <span class="notif-time">${n.time}</span>
+            <span class="notif-time">${timeAgo(n.createdAt)}</span>
           </li>`).join("");
       }
 
-      const count = unreadCount(notifications);
-      unreadBadge.textContent = count;
-      unreadBadge.hidden = count === 0;
+      unreadBadge.textContent = unread;
+      unreadBadge.hidden = unread === 0;
+    }
 
-      saveNotifications(notifications);
+    //load
+    async function refresh() {
+      if (!notifUserId) return;
+      try {
+        notifications = await api(`${NOTIF_API}/${notifUserPath}?type=${currentFilter}`);
+        const { count } = await api(`${NOTIF_API}/${notifUserPath}/unread-count`);
+        render(count);
+      } catch (e) {
+        listEl.innerHTML = `<li class="empty">${escapeHtml(e.message)}</li>`;
+      }
       updateNavBadge();
     }
 
     //read one
-    listEl.addEventListener("click", e => {
+    listEl.addEventListener("click", async e => {
       const item = e.target.closest(".notif");
       if (!item) return;
-      const n = notifications.find(n => n.id === Number(item.dataset.id));
-      if (n) n.read = true;
-      render();
+      try {
+        await api(`${NOTIF_API}/${notifUserPath}/${item.dataset.id}/read`, { method: "POST" });
+      } catch (err) {
+        showToast("Error", err.message, true);
+      }
+      refresh();
     });
 
     //read all
-    document.getElementById("mark-all").addEventListener("click", () => {
-      notifications.forEach(n => n.read = true);
-      render();
+    document.getElementById("mark-all").addEventListener("click", async () => {
+      try {
+        await api(`${NOTIF_API}/${notifUserPath}/read-all`, { method: "POST" });
+      } catch (err) {
+        showToast("Error", err.message, true);
+      }
+      refresh();
     });
 
     //tabs
@@ -134,64 +184,81 @@
         document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
         currentFilter = tab.dataset.filter;
-        render();
+        refresh();
       });
     });
 
     //popup
     let toastTimer;
-    function showToast(label, title) {
-      if (!prefs.popups) return;
+    function showToast(label, title, always = false) {
+      if (!prefs.popups && !always) return;
       const toast = document.getElementById("toast");
-      toast.innerHTML = `<strong>${label}</strong><br>${title}`;
+      toast.innerHTML = `<strong>${escapeHtml(label)}</strong><br>${escapeHtml(title)}`;
       toast.classList.add("show");
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => toast.classList.remove("show"), 4000);
     }
 
-    //add
-    function addNotification(type, title, text) {
-      if (!prefs[type]) return;
-      notifications.unshift({ id: Date.now(), type, title, text, time: "Just now", read: false });
-      render();
-      showToast(labels[type], title);
+    function announce(list) {
+      const newest = list.filter(Boolean).pop();
+      if (newest) showToast(labels[newest.type] || "Notification", newest.title);
     }
 
     //demo
-    const sampleStatus = [
-      ["Status changed: In session", "Your provider has started your session in Room 3."],
-      ["Status changed: Ready to be seen", "Please head to the front desk."],
-      ["Status changed: Visit completed", "Thanks for visiting. Take care."]
-    ];
-    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const demoServices = ["Psychiatric Walk-In Evaluation", "Medication Management & Review", "Urgent Consult"];
+    let demoVisit = null;   // { serviceName, position }
 
-    const simQueueBtn = document.getElementById("sim-queue");
-    const simStatusBtn = document.getElementById("sim-status");
-
-    simQueueBtn.addEventListener("click", () => {
-      const position = Math.floor(Math.random() * prefs.spots) + 1;
-      addNotification("queue",
-        position === 1 ? "You're next in line" : `You moved up to #${position}`,
-        `You're within your alert range of ${prefs.spots} spot${prefs.spots === 1 ? "" : "s"}.`);
-    });
-
-    simStatusBtn.addEventListener("click", () => {
-      const [title, text] = pick(sampleStatus);
-      addNotification("status", title, text);
-    });
-
-    //demo toggle
-    function updateDemoButtons() {
-      simQueueBtn.disabled = !prefs.queue;
-      simStatusBtn.disabled = !prefs.status;
-      simQueueBtn.title = prefs.queue ? "" : "Queue updates are turned off in settings";
-      simStatusBtn.title = prefs.status ? "" : "Status changes are turned off in settings";
+    function postEvent(path, body) {
+      return api(`${QUEUE_EVENTS_API}/${path}`, { method: "POST", body: JSON.stringify({ userId: notifUserId, ...body }) });
     }
 
+    async function runDemo(action) {
+      try {
+        if (action === "join") {
+          if (demoVisit) throw new Error(`You're already in the queue for ${demoVisit.serviceName}.`);
+          const serviceName = demoServices[Math.floor(Math.random() * demoServices.length)];
+          const position = Math.floor(Math.random() * 4) + 4;   // #4 to #7
+          const result = await postEvent("joined", { serviceName, position, estimatedWaitMinutes: position * 15 });
+          demoVisit = { serviceName, position };
+          demoStatus.textContent = `Joined ${serviceName} at #${position}. Click "Simulate moving up" to get closer to the front.`;
+          announce(result.notifications);
+        } else if (action === "move") {
+          if (!demoVisit) throw new Error("Join a queue first.");
+          if (demoVisit.position === 1) throw new Error("You're already first in line. Try \"Simulate being served\".");
+          demoVisit.position--;
+          const result = await postEvent("position", { serviceName: demoVisit.serviceName, position: demoVisit.position });
+          demoStatus.textContent = result.notification
+            ? `Now #${demoVisit.position}: within your alert range, so the backend sent a notification.`
+            : `Now #${demoVisit.position}: outside your alert range of ${prefs.alertWithinSpots}, so no notification yet.`;
+          announce([result.notification]);
+        } else if (action === "served") {
+          if (!demoVisit) throw new Error("Join a queue first.");
+          const result = await postEvent("served", { serviceName: demoVisit.serviceName });
+          demoStatus.textContent = `Served for ${demoVisit.serviceName}. It now shows as Completed in your History.`;
+          demoVisit = null;
+          announce([result.notification]);
+        }
+      } catch (err) {
+        demoStatus.textContent = err.message;
+      }
+      refresh();
+    }
+
+    document.getElementById("sim-queue").addEventListener("click", () => runDemo("join"));
+    document.getElementById("sim-move").addEventListener("click", () => runDemo("move"));
+    document.getElementById("sim-status").addEventListener("click", () => runDemo("served"));
+
     //reset
-    document.getElementById("reset").addEventListener("click", () => {
-      notifications = defaultNotifications.map(n => ({ ...n }));
-      render();
+    document.getElementById("reset").addEventListener("click", async () => {
+      try {
+        if (demoVisit) await postEvent("left", { serviceName: demoVisit.serviceName });
+        await api(`${NOTIF_API}/${notifUserPath}`, { method: "DELETE" });
+        demoStatus.textContent = "Notifications cleared.";
+      } catch (err) {
+        demoStatus.textContent = err.message;
+      }
+      demoVisit = null;
+      refresh();
     });
 
     //form
@@ -206,9 +273,9 @@
 
     //fill
     function fillForm() {
-      queueBox.checked = prefs.queue;
-      statusBox.checked = prefs.status;
-      spotsInput.value = prefs.spots;
+      queueBox.checked = prefs.queueUpdates;
+      statusBox.checked = prefs.statusChanges;
+      spotsInput.value = prefs.alertWithinSpots;
       popupsBox.checked = prefs.popups;
     }
 
@@ -221,60 +288,53 @@
       }
     }
 
-    //validate
-    function validate() {
-      let valid = true;
-
-      if (!queueBox.checked && !statusBox.checked) {
-        setError(null, typesError, "Choose at least one type of notification.");
-        valid = false;
-      } else {
-        setError(null, typesError, "");
-      }
-
-      const raw = spotsInput.value.trim();
-      const num = Number(raw);
-      if (raw === "") {
-        setError(spotsInput, spotsError, "Enter a number of spots.");
-        valid = false;
-      } else if (!Number.isInteger(num)) {
-        setError(spotsInput, spotsError, "Use a whole number, like 3.");
-        valid = false;
-      } else if (num < 1 || num > 10) {
-        setError(spotsInput, spotsError, "Enter a number from 1 to 10.");
-        valid = false;
-      } else {
-        setError(spotsInput, spotsError, "");
-      }
-
-      return valid;
-    }
-
-    //save
-    form.addEventListener("submit", e => {
+    //save (the backend validates; its error messages are shown next to the fields)
+    form.addEventListener("submit", async e => {
       e.preventDefault();
       successMsg.hidden = true;
-      if (!validate()) return;
+      setError(null, typesError, "");
+      setError(spotsInput, spotsError, "");
 
-      prefs = {
-        queue: queueBox.checked,
-        status: statusBox.checked,
-        spots: Number(spotsInput.value),
-        popups: popupsBox.checked
-      };
-      try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {}
+      const raw = spotsInput.value.trim();
+      const spots = raw === "" ? null : Number(raw);
+      if (spots !== null && !Number.isInteger(spots)) {
+        setError(spotsInput, spotsError, "Use a whole number, like 3.");
+        return;
+      }
 
-      updateDemoButtons();
-      successMsg.hidden = false;
+      try {
+        prefs = await api(`${NOTIF_API}/${notifUserPath}/settings`, {
+          method: "PUT",
+          body: JSON.stringify({
+            queueUpdates: queueBox.checked,
+            statusChanges: statusBox.checked,
+            alertWithinSpots: spots,
+            popups: popupsBox.checked
+          })
+        });
+        fillForm();
+        successMsg.hidden = false;
+      } catch (err) {
+        const errors = err.errors || {};
+        setError(null, typesError, errors.types || errors.queueUpdates || errors.statusChanges || "");
+        setError(spotsInput, spotsError, errors.alertWithinSpots || "");
+        if (!Object.keys(errors).length) setError(null, typesError, err.message);
+      }
     });
 
     //hide saved
     form.addEventListener("input", () => { successMsg.hidden = true; });
 
     //start
-    fillForm();
-    updateDemoButtons();
-    render();
+    async function start() {
+      if (!notifUserId) return;   // navbar.js sends logged-out visitors to the login page
+      try {
+        prefs = await api(`${NOTIF_API}/${notifUserPath}/settings`);
+      } catch (e) {}
+      fillForm();
+      refresh();
+    }
+    start();
   </script>
 </body>
 </html>

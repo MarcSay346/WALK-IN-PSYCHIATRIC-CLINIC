@@ -1,11 +1,11 @@
-using Dapper;
+using ClinicApi.Endpoints;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
-var connStr = builder.Configuration.GetConnectionString("ClinicDb");
+builder.Services.AddNotificationAndHistory();   // Notification + History modules (in memory)
 var app = builder.Build();
+
 // Debug: send error details back in the response
 app.Use(async (ctx, next) =>
 {
@@ -16,7 +16,31 @@ app.Use(async (ctx, next) =>
         await ctx.Response.WriteAsync(ex.GetType().Name + ": " + ex.Message);
     }
 });
+
 var hasher = new PasswordHasher<string>();   // built into ASP.NET Core, no extra package
+
+// ---------- In-memory patient accounts (A3: no database; resets when the server restarts) ----------
+var patients = new List<PatientAccount>();
+var patientsLock = new object();
+var nextPatientId = 1;
+
+void AddPatient(string firstName, string lastName, string email, string password, string? phone = null, DateTime? dateOfBirth = null)
+{
+    var normalizedEmail = email.Trim().ToLowerInvariant();
+    patients.Add(new PatientAccount
+    {
+        PatientId = nextPatientId++,
+        FirstName = firstName.Trim(),
+        LastName = lastName.Trim(),
+        Email = normalizedEmail,
+        Phone = phone,
+        DateOfBirth = dateOfBirth,
+        PasswordHash = hasher.HashPassword(normalizedEmail, password)
+    });
+}
+
+// demo account that always exists
+AddPatient("Test", "Patient", "patient@test.com", "password1");
 
 // Serve the HTML/CSS/JS from the repo folder (one level up)
 var site = new PhysicalFileProvider(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..")));
@@ -24,61 +48,61 @@ app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = site });
 app.UseStaticFiles(new StaticFileOptions { FileProvider = site });
 
 // ---------- REGISTER ----------
-app.MapPost("/api/register", async (RegisterRequest req) =>
+app.MapPost("/api/register", (RegisterRequest? req) =>
 {
-    if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
+    if (req is null || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
         return Results.BadRequest(new { error = "Email and a password of at least 6 characters are required." });
+    if (req.Email.Trim().Length > 100 || req.Password.Length > 100)
+        return Results.BadRequest(new { error = "Email and password must be 100 characters or fewer." });
+    if ((req.FirstName?.Length ?? 0) > 50 || (req.LastName?.Length ?? 0) > 50)
+        return Results.BadRequest(new { error = "First and last name must be 50 characters or fewer." });
 
-    using var db = new SqlConnection(connStr);
-    var exists = await db.ExecuteScalarAsync<int>(
-        "SELECT COUNT(*) FROM Patient WHERE Email = @Email", new { req.Email });
-    if (exists > 0)
-        return Results.Conflict(new { error = "An account with that email already exists." });
+    lock (patientsLock)
+    {
+        var email = req.Email.Trim().ToLowerInvariant();
+        if (patients.Any(p => p.Email == email))
+            return Results.Conflict(new { error = "An account with that email already exists." });
 
-    var hash = hasher.HashPassword(req.Email, req.Password);
-    var id = await db.ExecuteScalarAsync<int>(@"
-        INSERT INTO Patient (FirstName, LastName, DateOfBirth, Phone, Email, PasswordHash)
-        OUTPUT INSERTED.PatientId
-        VALUES (@FirstName, @LastName, @DateOfBirth, @Phone, @Email, @hash)",
-        new { req.FirstName, req.LastName, req.DateOfBirth, req.Phone, req.Email, hash });
-
-    return Results.Ok(new { patientId = id });
+        AddPatient(req.FirstName ?? "", req.LastName ?? "", email, req.Password, req.Phone, req.DateOfBirth);
+        return Results.Ok(new { patientId = patients[^1].PatientId });
+    }
 });
 
 // ---------- LOGIN ----------
-app.MapPost("/api/login", async (LoginRequest req) =>
+app.MapPost("/api/login", (LoginRequest? req) =>
 {
-    using var db = new SqlConnection(connStr);
-    var user = await db.QuerySingleOrDefaultAsync<PatientLogin>(
-        "SELECT PatientId, FirstName, LastName, PasswordHash FROM Patient WHERE Email = @Email",
-        new { req.Email });
+    if (req is null || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+        return Results.BadRequest(new { error = "Email and password are required." });
 
-    if (user is null || user.PasswordHash is null ||
-        hasher.VerifyHashedPassword(req.Email, user.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
+    var email = req.Email.Trim().ToLowerInvariant();
+    PatientAccount? user;
+    lock (patientsLock)
+    {
+        user = patients.FirstOrDefault(p => p.Email == email);
+    }
+
+    if (user is null ||
+        hasher.VerifyHashedPassword(email, user.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
         return Results.Unauthorized();
 
-    return Results.Ok(new { user.PatientId, user.FirstName, user.LastName });
+    return Results.Ok(new { user.PatientId, user.FirstName, user.LastName, user.Email });
 });
 
-// ---------- NOTIFICATIONS ----------
-app.MapGet("/api/notifications", async (int patientId) =>
-{
-    using var db = new SqlConnection(connStr);
-    return await db.QueryAsync(
-        @"SELECT NotificationId, Message, IsRead, CreatedAt
-          FROM Notification WHERE PatientId = @patientId
-          ORDER BY CreatedAt DESC", new { patientId });
-});
+// ---------- NOTIFICATIONS + HISTORY (/api/notifications, /api/history, /api/queue-events) ----------
+app.MapNotificationAndHistoryEndpoints();
 
 app.Run();
 
-record RegisterRequest(string FirstName, string LastName, DateTime DateOfBirth, string? Phone, string Email, string Password);
-record LoginRequest(string Email, string Password);
+record RegisterRequest(string? FirstName, string? LastName, DateTime? DateOfBirth, string? Phone, string? Email, string? Password);
+record LoginRequest(string? Email, string? Password);
 
-class PatientLogin
+class PatientAccount
 {
     public int PatientId { get; set; }
     public string FirstName { get; set; } = "";
     public string LastName { get; set; } = "";
-    public string? PasswordHash { get; set; }
+    public string Email { get; set; } = "";
+    public string? Phone { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+    public string PasswordHash { get; set; } = "";
 }
