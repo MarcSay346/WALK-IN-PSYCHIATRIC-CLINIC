@@ -12,14 +12,15 @@ function setupDashboard() {
     if (!event.target.classList.contains("toggle-queue")) return;
     const row = event.target.closest("tr");
     const isOpen = row.dataset.open === "true";
+    const nowOpen = adminLogic.toggleQueue(isOpen);
     const status = row.querySelector(".status");
     const name = row.querySelector(".service-name").textContent;
 
-    row.dataset.open = String(!isOpen);
-    status.textContent = isOpen ? "Closed" : "Open";
-    status.className = isOpen ? "status closed" : "status open";
-    event.target.textContent = isOpen ? "Open Queue" : "Close Queue";
-    document.getElementById("dashboardMessage").textContent = name + " queue was " + (isOpen ? "closed." : "opened.");
+    row.dataset.open = String(nowOpen);
+    status.textContent = nowOpen ? "Open" : "Closed";
+    status.className = nowOpen ? "status open" : "status closed";
+    event.target.textContent = nowOpen ? "Close Queue" : "Open Queue";
+    document.getElementById("dashboardMessage").textContent = name + " queue was " + (nowOpen ? "opened." : "closed.");
   });
 }
 
@@ -55,21 +56,15 @@ function setupServices() {
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
-    const values = {};
-    Object.keys(fields).forEach(key => values[key] = fields[key].value.trim());
+    const formValues = {};
+    Object.keys(fields).forEach(key => formValues[key] = fields[key].value);
+    const result = adminLogic.validateService(formValues);
 
-    if (!values.name || !values.description || !values.duration || !values.priority) {
-      error.textContent = "Please complete all required fields.";
+    if (!result.valid) {
+      error.textContent = result.error;
       return;
     }
-    if (values.name.length > 100) {
-      error.textContent = "Service Name must be 100 characters or less.";
-      return;
-    }
-    if (!Number.isInteger(Number(values.duration)) || Number(values.duration) < 1) {
-      error.textContent = "Duration must be a whole number greater than 0.";
-      return;
-    }
+    const values = result.values;
 
     let row;
     if (editing.value === "") {
