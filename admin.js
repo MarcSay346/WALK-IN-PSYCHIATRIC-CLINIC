@@ -42,7 +42,8 @@ function setupServices() {
     form.reset();
     editing.value = "";
     error.textContent = "";
-    document.getElementById("formTitle").textContent = "Create Service";
+    const titleEl = document.getElementById("formTitle");
+    if (titleEl) titleEl.textContent = "Create Service";
   }
 
   function fillRow(row, values) {
@@ -72,76 +73,124 @@ function setupServices() {
 
     let row;
     if (editing.value === "") {
-      row = table.insertRow();
-      row.innerHTML = '<td class="name"></td><td class="description"></td><td class="duration"></td><td class="priority"></td><td><button class="admin-btn small edit-service">Edit</button></td>';
+      if (table) {
+        row = table.insertRow();
+        row.innerHTML = '<td class="name"></td><td class="description"></td><td class="duration"></td><td class="priority"></td><td><button class="admin-btn small edit-service">Edit</button></td>';
+      }
       message.textContent = values.name + " was created.";
     } else {
-      row = table.rows[Number(editing.value)];
+      if (table) {
+        row = table.rows[Number(editing.value)];
+      }
       message.textContent = values.name + " was updated.";
     }
-    fillRow(row, values);
+    if (row) fillRow(row, values);
     clearForm();
   });
 
-  table.addEventListener("click", function (event) {
-    if (!event.target.classList.contains("edit-service")) return;
-    const row = event.target.closest("tr");
-    Object.keys(fields).forEach(key => fields[key].value = row.querySelector("." + key).textContent);
-    editing.value = row.sectionRowIndex;
-    document.getElementById("formTitle").textContent = "Edit Service";
-  });
+  if (table) {
+    table.addEventListener("click", function (event) {
+      if (!event.target.classList.contains("edit-service")) return;
+      const row = event.target.closest("tr");
+      Object.keys(fields).forEach(key => fields[key].value = row.querySelector("." + key).textContent);
+      editing.value = row.sectionRowIndex;
+      const titleEl = document.getElementById("formTitle");
+      if (titleEl) titleEl.textContent = "Edit Service";
+    });
+  }
 
-  document.getElementById("clearServiceForm").addEventListener("click", clearForm);
+  const clearBtn = document.getElementById("clearServiceForm");
+  if (clearBtn) clearBtn.addEventListener("click", clearForm);
 }
 
 function setupQueue() {
-  const service = document.getElementById("queueService");
-  if (!service) return;
+  const serviceSelect = document.getElementById("queueService");
+  if (!serviceSelect) return;
 
-  const queues = {
-    nate: [{ name: "Taylor M.", time: "9:10 AM" }, { name: "Jordan R.", time: "9:18 AM" }, { name: "Casey L.", time: "9:25 AM" }],
-    valdez: [{ name: "Morgan S.", time: "9:12 AM" }, { name: "Alex P.", time: "9:23 AM" }],
-    cole: []
-  };
   const body = document.getElementById("queueBody");
   const message = document.getElementById("queueMessage");
   const serveButton = document.getElementById("serveNextUser");
+  const queueCountEl = document.getElementById("queueCount");
+  const emptyQueueEl = document.getElementById("emptyQueue");
 
-  function renderQueue() {
-    const queue = queues[service.value];
-    body.innerHTML = queue.map(function (user, index) {
-      return `<tr><td>${index + 1}</td><td>${user.name}</td><td>${user.time}</td><td class="button-row">
-        <button class="admin-btn small move-up" data-index="${index}" ${index === 0 ? "disabled" : ""}>Up</button>
-        <button class="admin-btn small move-down" data-index="${index}" ${index === queue.length - 1 ? "disabled" : ""}>Down</button>
-        <button class="admin-btn small danger remove-user" data-index="${index}">Remove</button></td></tr>`;
-    }).join("");
-    document.getElementById("queueCount").textContent = queue.length;
-    document.getElementById("emptyQueue").hidden = queue.length > 0;
-    serveButton.disabled = queue.length === 0;
+  async function renderQueue() {
+    const selectedServiceText = serviceSelect.options[serviceSelect.selectedIndex].text;
+    
+    try {
+      const response = await fetch(`/api/queue?serviceName=${encodeURIComponent(selectedServiceText)}`);
+      if (!response.ok) return;
+
+      const queueItems = await response.json();
+
+      if (body) {
+        body.innerHTML = queueItems.map((item, index) => {
+          const formattedTime = new Date(item.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `
+            <tr>
+              <td>#${index + 1}</td>
+              <td>
+                <div class="name">${item.name}</div>
+                <small style="color:var(--muted);">${item.contact || ''}</small>
+              </td>
+              <td>${formattedTime}</td>
+              <td class="button-row">
+                <button class="admin-btn small danger remove-user" data-id="${item.id}">Remove</button>
+              </td>
+            </tr>`;
+        }).join("");
+      }
+
+      if (queueCountEl) queueCountEl.textContent = queueItems.length;
+      if (emptyQueueEl) emptyQueueEl.hidden = queueItems.length > 0;
+      if (serveButton) serveButton.disabled = queueItems.length === 0;
+
+    } catch (err) {
+      console.error("Failed to load queue from backend", err);
+    }
   }
 
-  body.addEventListener("click", function (event) {
-    const index = Number(event.target.dataset.index);
-    const queue = queues[service.value];
-    if (event.target.classList.contains("move-up")) {
-      [queue[index - 1], queue[index]] = [queue[index], queue[index - 1]];
-      message.textContent = "User moved up in the queue.";
-    } else if (event.target.classList.contains("move-down")) {
-      [queue[index], queue[index + 1]] = [queue[index + 1], queue[index]];
-      message.textContent = "User moved down in the queue.";
-    } else if (event.target.classList.contains("remove-user")) {
-      message.textContent = queue[index].name + " was removed from the queue.";
-      queue.splice(index, 1);
-    } else return;
+  if (body) {
+    body.addEventListener("click", async function (event) {
+      if (!event.target.classList.contains("remove-user")) return;
+      const patientId = event.target.dataset.id;
+
+      try {
+        const response = await fetch(`/api/queue/leave/${patientId}`, { method: 'DELETE' });
+        if (response.ok) {
+          if (message) message.textContent = "User was removed from the queue.";
+          renderQueue();
+        }
+      } catch (err) {
+        console.error("Error removing user", err);
+      }
+    });
+  }
+
+  if (serveButton) {
+    serveButton.addEventListener("click", async function () {
+      const selectedServiceText = serviceSelect.options[serviceSelect.selectedIndex].text;
+
+      try {
+        const response = await fetch(`/api/queue/serve-next?serviceName=${encodeURIComponent(selectedServiceText)}`, {
+          method: 'POST'
+        });
+        if (response.ok) {
+          const served = await response.json();
+          if (message) message.textContent = served.name + " is now being served.";
+          renderQueue();
+        } else {
+          if (message) message.textContent = "No users are waiting for this service.";
+        }
+      } catch (err) {
+        console.error("Error serving next user", err);
+      }
+    });
+  }
+
+  serviceSelect.addEventListener("change", function () {
+    if (message) message.textContent = "";
     renderQueue();
   });
 
-  serveButton.addEventListener("click", function () {
-    const user = queues[service.value].shift();
-    message.textContent = user.name + " is now being served.";
-    renderQueue();
-  });
-
-  service.addEventListener("change", function () { message.textContent = ""; renderQueue(); });
   renderQueue();
 }
