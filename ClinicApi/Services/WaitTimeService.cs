@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ClinicApi.Services;
 
 /// <summary>Wait-Time Estimation module (A3 module 4): rule-based estimate.</summary>
@@ -13,12 +11,13 @@ public class WaitTimeService
     {
         var errors = new Dictionary<string, string>();
 
-        // TODO: validate the inputs with InputRules (already in the project), e.g.
-        //   InputRules.IntInRange(errors, "position", "Queue position", position, 1, MaxPosition);
-        //   ...same idea for expectedDurationMinutes (1..MaxDurationMinutes)...
-        //   InputRules.ThrowIfInvalid(errors);
+        // Validate the inputs (required, whole numbers, within range)
+        InputRules.IntInRange(errors, "position", "Queue position", position, 1, MaxPosition);
+        InputRules.IntInRange(errors, "expectedDurationMinutes", "Expected duration", expectedDurationMinutes, 1, MaxDurationMinutes);
+        InputRules.ThrowIfInvalid(errors);
 
-        // TODO: return the estimate. A3 suggests: (people ahead of you) x (expected duration).
-        return 0;
+        // Rule-based estimate: (people ahead of you) x (expected duration per person).
+        // Position 1 = next in line = 0 minutes.
+        return (position!.Value - 1) * expectedDurationMinutes!.Value;
     }
 }

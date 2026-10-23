@@ -84,7 +84,11 @@
         showFieldError(loginPassword, loginPasswordError, '');
         loginAlert.textContent = `Welcome, ${result.user.name}! Redirecting...`;
         loginAlert.style.display = 'block';
-        setTimeout(() => { window.location.href = 'joinQueue.html'; }, 1500);
+        const role = String(result.user.role || '').toLowerCase();
+        const isAdmin = result.user.isAdmin === true || role.includes('admin');
+        setTimeout(() => {
+          window.location.href = isAdmin ? 'admin-dashboard.html' : 'joinQueue.html';
+}, 1500);
         return;
       }
  

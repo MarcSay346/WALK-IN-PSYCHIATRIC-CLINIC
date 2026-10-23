@@ -1,9 +1,13 @@
 using ClinicApi.Endpoints;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
+using RadiantMindClinic.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddNotificationAndHistory();   // Notification + History modules (in memory)
+builder.Services.AddWaitTime();                 // Wait-time module (registers WaitTimeService as a singleton)
+builder.Services.AddControllers();              // Queue module uses a controller (QueueController)
+builder.Services.AddSingleton<IQueueService, QueueService>();   // Queue module (in memory, one shared queue)
 var app = builder.Build();
 
 // Debug: send error details back in the response
@@ -90,6 +94,12 @@ app.MapPost("/api/login", (LoginRequest? req) =>
 
 // ---------- NOTIFICATIONS + HISTORY (/api/notifications, /api/history, /api/queue-events) ----------
 app.MapNotificationAndHistoryEndpoints();
+
+// ---------- WAIT TIME (/api/wait-time) ----------
+app.MapWaitTimeEndpoints();
+
+// ---------- QUEUE (/api/queue, /api/queue/join, /api/queue/leave/{id}, /api/queue/serve-next, /api/queue/status/{id}) ----------
+app.MapControllers();
 
 app.Run();
 
