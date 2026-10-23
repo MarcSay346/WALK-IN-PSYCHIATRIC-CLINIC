@@ -28,7 +28,7 @@ var patients = new List<PatientAccount>();
 var patientsLock = new object();
 var nextPatientId = 1;
 
-void AddPatient(string firstName, string lastName, string email, string password, string? phone = null, DateTime? dateOfBirth = null)
+void AddPatient(string firstName, string lastName, string email, string password, string? phone = null, DateTime? dateOfBirth = null, string role = "patient")
 {
     var normalizedEmail = email.Trim().ToLowerInvariant();
     patients.Add(new PatientAccount
@@ -39,12 +39,14 @@ void AddPatient(string firstName, string lastName, string email, string password
         Email = normalizedEmail,
         Phone = phone,
         DateOfBirth = dateOfBirth,
-        PasswordHash = hasher.HashPassword(normalizedEmail, password)
+        PasswordHash = hasher.HashPassword(normalizedEmail, password),
+        Role = role
     });
 }
 
-// demo account that always exists
+// demo accounts that always exist (one patient, one administrator)
 AddPatient("Test", "Patient", "patient@test.com", "password1");
+AddPatient("Clinic", "Admin", "admin@test.com", "admin123", role: "admin");
 
 // Serve the HTML/CSS/JS from the repo folder (one level up)
 var site = new PhysicalFileProvider(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..")));
@@ -89,7 +91,8 @@ app.MapPost("/api/login", (LoginRequest? req) =>
         hasher.VerifyHashedPassword(email, user.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
         return Results.Unauthorized();
 
-    return Results.Ok(new { user.PatientId, user.FirstName, user.LastName, user.Email });
+    // role tells the front end whether to open the patient pages or the admin pages
+    return Results.Ok(new { user.PatientId, user.FirstName, user.LastName, user.Email, user.Role });
 });
 
 // ---------- NOTIFICATIONS + HISTORY (/api/notifications, /api/history, /api/queue-events) ----------
@@ -115,4 +118,5 @@ class PatientAccount
     public string? Phone { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public string PasswordHash { get; set; } = "";
+    public string Role { get; set; } = "patient";   // "patient" or "admin"; /api/register always creates patients
 }
