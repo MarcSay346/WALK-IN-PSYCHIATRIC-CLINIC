@@ -8,6 +8,7 @@ builder.Services.AddNotificationAndHistory();   // Notification + History module
 builder.Services.AddWaitTime();                 // Wait-time module (registers WaitTimeService as a singleton)
 builder.Services.AddControllers();              // Queue module uses a controller (QueueController)
 builder.Services.AddSingleton<IQueueService, QueueService>();   // Queue module (in memory, one shared queue)
+builder.Services.AddServiceManagement();       // Service Management module (Kayson)
 var app = builder.Build();
 
 // Debug: send error details back in the response
@@ -100,6 +101,9 @@ app.MapNotificationAndHistoryEndpoints();
 
 // ---------- WAIT TIME (/api/wait-time) ----------
 app.MapWaitTimeEndpoints();
+
+// ---------- SERVICES (/api/services) ----------
+app.MapServiceEndpoints();
 
 // ---------- QUEUE (/api/queue, /api/queue/join, /api/queue/leave/{id}, /api/queue/serve-next, /api/queue/status/{id}) ----------
 app.MapControllers();
