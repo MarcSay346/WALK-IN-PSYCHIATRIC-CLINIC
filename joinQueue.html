@@ -119,10 +119,10 @@
             <select id="service-select" required>
               <option value="">-- Choose a service --</option>
               
-              <option value="Psychiatric Walk-In Evaluation">Psychiatric Walk-In Evaluation (Est. wait: 25 min)</option>
-              <option value="Medication Management & Review">Medication Management & Review (Est. wait: 15 min)</option>
-              <option value="Urgent Consult">Urgent Consult (Est. wait: 5 min)</option>
-               <option value="Other">Other (Est. wait: 30 min)</option>
+              <!-- same service names as the admin queue page, so admins see who joined -->
+              <option value="Dr. Nate">Dr. Nate (about 60 min per visit)</option>
+              <option value="Dr. Valdez">Dr. Valdez (about 45 min per visit)</option>
+              <option value="Dr. Cole">Dr. Cole (about 30 min per visit)</option>
             </select>
             <div id="service-error" class="error"></div>
           </fieldset>
@@ -251,14 +251,30 @@
       return getCurrentUserId();
     }
 
-    // Reads the minutes out of the option text, e.g. "(Est. wait: 25 min)" -> 25
-    function getWaitMinutes(selectEl) {
-      const text = selectEl.options[selectEl.selectedIndex]?.text || "";
-      const match = text.match(/(\d+)\s*min/);
-      return match ? parseInt(match[1], 10) : 15;
+    // ----- Queue module (backend): /api/queue/join and /api/queue/leave/{id} -----
+    // Returns { item } on success or { error } with the backend's message.
+    async function joinBackendQueue(name, contact, serviceName) {
+      try {
+        const res = await fetch("/api/queue/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, contact, serviceName, priority: 3 })
+        });
+        let body = null;
+        try { body = await res.json(); } catch (e) {}
+        if (!res.ok) return { error: (body && (body.message || body.error)) || ("Request failed (" + res.status + ").") };
+        return { item: body };
+      } catch (err) {
+        return { error: "Can't reach the server. Is dotnet run still going?" };
+      }
     }
 
-    // Sends one queue event: "joined", "position", "served" or "left"
+    async function leaveBackendQueue(id) {
+      try { await fetch("/api/queue/leave/" + encodeURIComponent(id), { method: "DELETE" }); } catch (e) {}
+    }
+
+    // Sends one queue event: "joined", "position", "served" or "left".
+    // Returns null on success, or the backend's error message if it refused.
     async function sendQueueEvent(type, data) {
       try {
         const res = await fetch("/api/queue-events/" + type, {
@@ -271,9 +287,16 @@
             estimatedWaitMinutes: data.estimatedWaitMinutes
           })
         });
-        if (!res.ok) console.warn("Queue event '" + type + "' failed:", res.status, await res.text());
+        if (res.ok) return null;
+
+        let body = null;
+        try { body = await res.json(); } catch (e) {}
+        const msg = (body && (body.error || Object.values(body.errors || {})[0])) || ("Request failed (" + res.status + ").");
+        console.warn("Queue event '" + type + "' failed:", res.status, body);
+        return msg;
       } catch (err) {
         console.warn("Could not reach the server for queue event '" + type + "':", err);
+        return "Can't reach the server. Is dotnet run still going?";
       }
     }
 
@@ -331,15 +354,33 @@
       }
 
       if (valid) {
-        const waitMinutes = getWaitMinutes(service);
-        currentQueue = { serviceName: service.value, position: 3, estimatedWaitMinutes: waitMinutes };
+        // 1. add the patient to the real queue (position + wait come from QueueService)
+        const joined = await joinBackendQueue(trimmed, contact.value.trim(), service.value);
+        if (joined.error) {
+          showToast("Couldn't join", joined.error);
+          return;
+        }
+        const item = joined.item;
+        const joining = {
+          id: item.id,
+          serviceName: item.serviceName,
+          position: item.position,
+          estimatedWaitMinutes: item.estimatedWaitMinutes
+        };
+        const waitMinutes = joining.estimatedWaitMinutes;
 
+        // 2. tell the Notification + History modules -> "joined" notification + history entry
+        const error = await sendQueueEvent("joined", joining);
+        if (error) {
+          await leaveBackendQueue(item.id);   // undo step 1 so both stay in sync
+          showToast("Couldn't join", error);  // e.g. already in a queue
+          return;
+        }
+
+        currentQueue = joining;
         document.getElementById("status-service-name").textContent = service.value;
         document.getElementById("status-title").textContent = "Live Position: #" + currentQueue.position + " in Line";
         document.getElementById("status-wait-time").textContent = waitMinutes + " minutes";
-
-        // tell the backend -> creates the "joined" notification + history entry
-        await sendQueueEvent("joined", currentQueue);
 
         showToast("Success!", "You have successfully joined the queue.");
         switchScreen("status");
@@ -349,6 +390,7 @@
     async function leaveQueue() {
       if (confirm("Are you sure you want to leave the queue?")) {
         if (currentQueue) {
+          await leaveBackendQueue(currentQueue.id);
           await sendQueueEvent("left", currentQueue);
           currentQueue = null;
         }
