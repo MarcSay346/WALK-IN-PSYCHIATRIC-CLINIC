@@ -81,17 +81,17 @@
       }
     }
 
-    regForm.addEventListener('submit', function (e) {
+    regForm.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      const result = registerUser({                 // from auth.js
+      const result = await apiRegister({            // from authentication.js (calls /api/register)
         email: regEmail.value,
         password: regPassword.value,
         confirmPassword: regConfirm.value
       });
 
       const errors = result.errors || {};
-      showFieldError(regEmail, regEmailError, errors.email || '');
+      showFieldError(regEmail, regEmailError, errors.email || errors.form || '');
       showFieldError(regPassword, regPasswordError, errors.password || '');
       showFieldError(regConfirm, regConfirmError, errors.confirmPassword || '');
 

@@ -1,11 +1,11 @@
 using ClinicApi.Data;
 using ClinicApi.Endpoints;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
 using RadiantMindClinic.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDatabase(builder.Configuration);   // A4: SQL Server (ConnectionStrings:ClinicDb in user secrets)
+builder.Services.AddAccounts();                  // Login/register module (UserCredentials, UserProfile tables)
 builder.Services.AddNotificationAndHistory();   // Notification + History modules (Notification, VisitHistory tables)
 builder.Services.AddWaitTime();                 // Wait-time module (registers WaitTimeService as a singleton)
 builder.Services.AddControllers();              // Queue module uses a controller (QueueController)
@@ -24,79 +24,13 @@ app.Use(async (ctx, next) =>
     }
 });
 
-var hasher = new PasswordHasher<string>();   // built into ASP.NET Core, no extra package
-
-// ---------- In-memory patient accounts (A3: no database; resets when the server restarts) ----------
-var patients = new List<PatientAccount>();
-var patientsLock = new object();
-var nextPatientId = 1;
-
-void AddPatient(string firstName, string lastName, string email, string password, string? phone = null, DateTime? dateOfBirth = null, string role = "patient")
-{
-    var normalizedEmail = email.Trim().ToLowerInvariant();
-    patients.Add(new PatientAccount
-    {
-        PatientId = nextPatientId++,
-        FirstName = firstName.Trim(),
-        LastName = lastName.Trim(),
-        Email = normalizedEmail,
-        Phone = phone,
-        DateOfBirth = dateOfBirth,
-        PasswordHash = hasher.HashPassword(normalizedEmail, password),
-        Role = role
-    });
-}
-
-// demo accounts that always exist (one patient, one administrator)
-AddPatient("Test", "Patient", "patient@test.com", "password1");
-AddPatient("Clinic", "Admin", "admin@test.com", "admin123", role: "admin");
-
 // Serve the HTML/CSS/JS from the repo folder (one level up)
 var site = new PhysicalFileProvider(Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..")));
 app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = site });
 app.UseStaticFiles(new StaticFileOptions { FileProvider = site });
 
-// ---------- REGISTER ----------
-app.MapPost("/api/register", (RegisterRequest? req) =>
-{
-    if (req is null || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
-        return Results.BadRequest(new { error = "Email and a password of at least 6 characters are required." });
-    if (req.Email.Trim().Length > 100 || req.Password.Length > 100)
-        return Results.BadRequest(new { error = "Email and password must be 100 characters or fewer." });
-    if ((req.FirstName?.Length ?? 0) > 50 || (req.LastName?.Length ?? 0) > 50)
-        return Results.BadRequest(new { error = "First and last name must be 50 characters or fewer." });
-
-    lock (patientsLock)
-    {
-        var email = req.Email.Trim().ToLowerInvariant();
-        if (patients.Any(p => p.Email == email))
-            return Results.Conflict(new { error = "An account with that email already exists." });
-
-        AddPatient(req.FirstName ?? "", req.LastName ?? "", email, req.Password, req.Phone, req.DateOfBirth);
-        return Results.Ok(new { patientId = patients[^1].PatientId });
-    }
-});
-
-// ---------- LOGIN ----------
-app.MapPost("/api/login", (LoginRequest? req) =>
-{
-    if (req is null || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
-        return Results.BadRequest(new { error = "Email and password are required." });
-
-    var email = req.Email.Trim().ToLowerInvariant();
-    PatientAccount? user;
-    lock (patientsLock)
-    {
-        user = patients.FirstOrDefault(p => p.Email == email);
-    }
-
-    if (user is null ||
-        hasher.VerifyHashedPassword(email, user.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
-        return Results.Unauthorized();
-
-    // role tells the front end whether to open the patient pages or the admin pages
-    return Results.Ok(new { user.PatientId, user.FirstName, user.LastName, user.Email, user.Role });
-});
+// ---------- LOGIN + REGISTER (/api/login, /api/register, /api/users/{id}) ----------
+app.MapAccountEndpoints();
 
 // ---------- NOTIFICATIONS + HISTORY (/api/notifications, /api/history, /api/queue-events) ----------
 app.MapNotificationAndHistoryEndpoints();
@@ -111,18 +45,3 @@ app.MapServiceEndpoints();
 app.MapControllers();
 
 app.Run();
-
-record RegisterRequest(string? FirstName, string? LastName, DateTime? DateOfBirth, string? Phone, string? Email, string? Password);
-record LoginRequest(string? Email, string? Password);
-
-class PatientAccount
-{
-    public int PatientId { get; set; }
-    public string FirstName { get; set; } = "";
-    public string LastName { get; set; } = "";
-    public string Email { get; set; } = "";
-    public string? Phone { get; set; }
-    public DateTime? DateOfBirth { get; set; }
-    public string PasswordHash { get; set; } = "";
-    public string Role { get; set; } = "patient";   // "patient" or "admin"; /api/register always creates patients
-}

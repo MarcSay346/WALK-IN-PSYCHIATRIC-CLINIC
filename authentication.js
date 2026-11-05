@@ -1,4 +1,7 @@
-// auth.js — login / registration logic using dummy data + localStorage
+// auth.js — login / registration logic
+// A4: the login and register pages call the backend (apiLogin / apiRegister), which checks
+// passwords against the database (hashed). The older localStorage functions (loginUser,
+// registerUser) are kept only for the A3 Jest tests and are no longer used by the pages.
 // Works in the browser (<script src="auth.js">) and in Jest (require("./auth")).
 
 const USERS_KEY = "clinicUsers";   // list of registered users
@@ -118,12 +121,84 @@ function publicUser(user) {
   return { name: user.name, email: user.email, role: user.role };
 }
 
+// ---------- A4: backend login / registration ----------
+// fetchFn and storage are optional so Jest can pass fakes.
+
+function getFetch(fetchFn) {
+  if (fetchFn) return fetchFn;
+  if (typeof fetch !== "undefined") return fetch;
+  throw new Error("No fetch available");
+}
+
+async function readJson(res) {
+  try { return await res.json(); } catch (e) { return null; }
+}
+
+// what we keep in localStorage "currentUser" (navbar.js reads patientId / userId from it)
+function sessionUser(apiUser) {
+  return {
+    userId: apiUser.userId,
+    patientId: apiUser.patientId ?? apiUser.userId,
+    name: apiUser.name,
+    email: apiUser.email,
+    role: String(apiUser.role || "user").toLowerCase()
+  };
+}
+
+// turns the backend's error body into { field: message } for the form
+function serverErrors(status, body) {
+  if (body && body.errors) return { ...body.errors };
+  if (status === 401) return { form: "Incorrect email or password." };
+  if (status === 409) return { email: (body && body.error) || "An account with this email already exists." };
+  return { form: (body && body.error) || ("Request failed (" + status + ").") };
+}
+
+async function apiRegister(data, fetchFn, storage) {
+  const check = validateRegistration(data);
+  if (!check.valid) return { ok: false, errors: check.errors };
+
+  try {
+    const res = await getFetch(fetchFn)("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: data.email.trim(), password: data.password })
+    });
+    const body = await readJson(res);
+    if (!res.ok) return { ok: false, errors: serverErrors(res.status, body) };
+    return { ok: true, user: sessionUser(body) };
+  } catch (e) {
+    return { ok: false, errors: { form: "Can't reach the server. Is dotnet run still going?" } };
+  }
+}
+
+async function apiLogin(email, password, fetchFn, storage) {
+  const check = validateLogin(email, password);
+  if (!check.valid) return { ok: false, errors: check.errors };
+
+  try {
+    const res = await getFetch(fetchFn)("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), password })
+    });
+    const body = await readJson(res);
+    if (!res.ok) return { ok: false, errors: serverErrors(res.status, body) };
+
+    const current = sessionUser(body);
+    getStorage(storage).setItem(USER_KEY, JSON.stringify(current));
+    return { ok: true, user: current };
+  } catch (e) {
+    return { ok: false, errors: { form: "Can't reach the server. Is dotnet run still going?" } };
+  }
+}
+
 // ---------- export for Jest (ignored in the browser) ----------
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     USERS_KEY, USER_KEY, DUMMY_USERS, MIN_PASSWORD_LENGTH,
     isValidEmail, isValidPassword, validateLogin, validateRegistration,
     getUsers, saveUsers, findUserByEmail,
-    registerUser, loginUser, logoutUser, getCurrentUser
+    registerUser, loginUser, logoutUser, getCurrentUser,
+    apiRegister, apiLogin, sessionUser, serverErrors
   };
 }

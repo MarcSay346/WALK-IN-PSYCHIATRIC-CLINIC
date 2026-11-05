@@ -74,10 +74,10 @@
       }
     }
  
-    loginForm.addEventListener('submit', function (e) {
+    loginForm.addEventListener('submit', async function (e) {
       e.preventDefault();
  
-      const result = loginUser(loginEmail.value, loginPassword.value);   // from auth.js
+      const result = await apiLogin(loginEmail.value, loginPassword.value);   // from authentication.js (calls /api/login)
  
       if (result.ok) {
         showFieldError(loginEmail, loginEmailError, '');
