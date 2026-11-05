@@ -1,10 +1,12 @@
+using ClinicApi.Data;
 using ClinicApi.Endpoints;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
 using RadiantMindClinic.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNotificationAndHistory();   // Notification + History modules (in memory)
+builder.Services.AddDatabase(builder.Configuration);   // A4: SQL Server (ConnectionStrings:ClinicDb in user secrets)
+builder.Services.AddNotificationAndHistory();   // Notification + History modules (Notification, VisitHistory tables)
 builder.Services.AddWaitTime();                 // Wait-time module (registers WaitTimeService as a singleton)
 builder.Services.AddControllers();              // Queue module uses a controller (QueueController)
 builder.Services.AddSingleton<IQueueService, QueueService>();   // Queue module (in memory, one shared queue)

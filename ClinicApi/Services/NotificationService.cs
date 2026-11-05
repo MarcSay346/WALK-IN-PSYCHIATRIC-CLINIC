@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ClinicApi.Data;
 
 namespace ClinicApi.Services;
 
@@ -10,6 +11,8 @@ namespace ClinicApi.Services;
 ///   2. a user is close to being served -> CheckCloseToServed
 /// plus status changes (being served / leaving). Notifications are logged to the console
 /// and returned to the front end through the API (no real email/SMS).
+/// A4: notifications and settings are stored through an INotificationRepository
+/// (SQL Server in the app, in memory in the unit tests).
 /// </summary>
 public class NotificationService
 {
@@ -22,11 +25,13 @@ public class NotificationService
     public const int MaxQueuePosition = 1000;
     public const int MaxWaitMinutes = 1440;
 
-    private readonly List<Notification> _notifications = new();
-    private readonly Dictionary<string, NotificationSettings> _settings = new();
-    private readonly Dictionary<string, int> _lastAlertedPosition = new();   // "user|service" -> position
+    private readonly INotificationRepository _store;
+    private readonly Dictionary<string, int> _lastAlertedPosition = new();   // "user|service" -> position (not saved)
     private readonly object _lock = new();
-    private int _nextId = 1;
+
+    public NotificationService() : this(new InMemoryNotificationRepository()) { }
+
+    public NotificationService(INotificationRepository store) => _store = store;
 
     // ---------- trigger 1: user joins a queue ----------
 
@@ -109,10 +114,7 @@ public class NotificationService
 
         lock (_lock)
         {
-            return _notifications
-                .Where(n => n.UserId == user && (filter == "all" || n.Type == filter))
-                .OrderByDescending(n => n.Id)
-                .ToList();
+            return _store.GetForUser(user, filter == "all" ? null : filter);
         }
     }
 
@@ -121,7 +123,7 @@ public class NotificationService
         var user = RequireUserId(userId);
         lock (_lock)
         {
-            return _notifications.Count(n => n.UserId == user && !n.Read);
+            return _store.CountUnread(user);
         }
     }
 
@@ -130,10 +132,7 @@ public class NotificationService
         var user = RequireUserId(userId);
         lock (_lock)
         {
-            var note = _notifications.FirstOrDefault(n => n.Id == notificationId && n.UserId == user);
-            if (note is null) return false;
-            note.Read = true;
-            return true;
+            return _store.MarkRead(user, notificationId);
         }
     }
 
@@ -142,9 +141,7 @@ public class NotificationService
         var user = RequireUserId(userId);
         lock (_lock)
         {
-            var unread = _notifications.Where(n => n.UserId == user && !n.Read).ToList();
-            unread.ForEach(n => n.Read = true);
-            return unread.Count;
+            return _store.MarkAllRead(user);
         }
     }
 
@@ -155,7 +152,7 @@ public class NotificationService
         {
             foreach (var key in _lastAlertedPosition.Keys.Where(k => k.StartsWith(user + "|")).ToList())
                 _lastAlertedPosition.Remove(key);
-            return _notifications.RemoveAll(n => n.UserId == user);
+            return _store.DeleteForUser(user);
         }
     }
 
@@ -199,7 +196,7 @@ public class NotificationService
                 AlertWithinSpots = request.AlertWithinSpots!.Value,
                 Popups = request.Popups ?? current.Popups
             };
-            _settings[user] = updated;
+            _store.SaveSettings(user, updated);
             return updated.Copy();
         }
     }
@@ -238,22 +235,13 @@ public class NotificationService
     }
 
     private NotificationSettings SettingsFor(string user) =>
-        _settings.TryGetValue(user, out var saved) ? saved : new NotificationSettings();
+        _store.GetSettings(user) ?? new NotificationSettings();
 
     private static string PositionKey(string user, string service) => $"{user}|{service.ToLowerInvariant()}";
 
     private Notification Add(string user, string type, string title, string message)
     {
-        var note = new Notification
-        {
-            Id = _nextId++,
-            UserId = user,
-            Type = type,
-            Title = title,
-            Message = message,
-            CreatedAt = DateTime.UtcNow
-        };
-        _notifications.Add(note);
+        var note = _store.Add(user, type, title, message, DateTime.UtcNow);
         Console.WriteLine($"[Notification] to {user}: {title}");
         return note;
     }

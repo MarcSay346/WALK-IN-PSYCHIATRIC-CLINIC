@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ClinicApi.Data;
 using ClinicApi.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -22,9 +23,11 @@ public static class NotificationHistoryEndpoints
 {
     public static IServiceCollection AddNotificationAndHistory(this IServiceCollection services)
     {
-        // one shared in-memory store for the whole app
-        services.AddSingleton(_ => new NotificationService());
-        services.AddSingleton(_ => new HistoryService());
+        // A4: SQL Server when a ClinicDb connection string is set, otherwise in memory
+        services.AddSingleton(sp => new NotificationService(DatabaseSetup.Pick<INotificationRepository>(sp,
+            db => new SqlNotificationRepository(db), () => new InMemoryNotificationRepository())));
+        services.AddSingleton(sp => new HistoryService(DatabaseSetup.Pick<IHistoryRepository>(sp,
+            db => new SqlHistoryRepository(db), () => new InMemoryHistoryRepository())));
         services.AddSingleton<QueueEventHandler>();
 
         // wrong JSON types (e.g. "abc" for a number) return 400 instead of throwing

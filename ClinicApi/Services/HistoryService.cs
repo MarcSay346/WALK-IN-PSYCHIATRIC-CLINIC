@@ -1,21 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ClinicApi.Data;
 
 namespace ClinicApi.Services;
 
 /// <summary>
 /// History module (A3 module 6). Tracks each user's queue participation in memory:
 /// joining a queue creates a "Waiting" entry, which later becomes "Served" or "Left".
+/// A4: entries are stored through an IHistoryRepository (VisitHistory table in SQL Server,
+/// in memory in the unit tests).
 /// </summary>
 public class HistoryService
 {
     public const int MaxUserIdLength = 100;
     public const int MaxServiceNameLength = 100;
 
-    private readonly List<HistoryEntry> _entries = new();
+    private readonly IHistoryRepository _store;
     private readonly object _lock = new();
-    private int _nextId = 1;
+
+    public HistoryService() : this(new InMemoryHistoryRepository()) { }
+
+    public HistoryService(IHistoryRepository store) => _store = store;
 
     public HistoryEntry RecordJoin(string? userId, string? serviceName)
     {
@@ -29,18 +35,10 @@ public class HistoryService
 
         lock (_lock)
         {
-            if (FindWaiting(user, service) is not null)
+            if (_store.FindWaiting(user, service) is not null)
                 throw new InvalidOperationException($"You are already waiting in the queue for {service}.");
 
-            var entry = new HistoryEntry
-            {
-                Id = _nextId++,
-                UserId = user,
-                ServiceName = service,
-                JoinedAt = DateTime.UtcNow
-            };
-            _entries.Add(entry);
-            return entry;
+            return _store.Add(user, service, DateTime.UtcNow);
         }
     }
 
@@ -60,10 +58,9 @@ public class HistoryService
 
         lock (_lock)
         {
-            var entry = FindWaiting(user, service)
+            var entry = _store.FindWaiting(user, service)
                 ?? throw new KeyNotFoundException($"No active queue visit found for {service}.");
-            entry.Outcome = normalized!;
-            entry.EndedAt = DateTime.UtcNow;
+            _store.Complete(entry, normalized!, DateTime.UtcNow);
             return entry;
         }
     }
@@ -77,10 +74,7 @@ public class HistoryService
 
         lock (_lock)
         {
-            return _entries
-                .Where(e => e.UserId == user)
-                .OrderByDescending(e => e.Id)
-                .ToList();
+            return _store.GetForUser(user);
         }
     }
 
@@ -93,12 +87,6 @@ public class HistoryService
             Left: entries.Count(e => e.Outcome == HistoryOutcomes.Left),
             Waiting: entries.Count(e => e.Outcome == HistoryOutcomes.Waiting));
     }
-
-    private HistoryEntry? FindWaiting(string user, string service) =>
-        _entries.LastOrDefault(e =>
-            e.UserId == user &&
-            e.Outcome == HistoryOutcomes.Waiting &&
-            string.Equals(e.ServiceName, service, StringComparison.OrdinalIgnoreCase));
 
     private static string? NormalizeOutcome(string? outcome) =>
         outcome?.Trim().ToLowerInvariant() switch
