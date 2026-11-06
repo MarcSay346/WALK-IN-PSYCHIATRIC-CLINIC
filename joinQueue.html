@@ -251,6 +251,28 @@
       return getCurrentUserId();
     }
 
+    // ----- A4: the service list comes from the database (GET /api/services) -----
+    // The options written in the HTML stay as a fallback if the server can't be reached.
+    async function loadServices() {
+      const select = document.getElementById("service-select");
+      try {
+        const res = await fetch("/api/services");
+        if (!res.ok) return;
+        const services = await res.json();
+        if (!Array.isArray(services) || services.length === 0) return;
+        const chosen = select.value;
+        select.innerHTML = '<option value="">-- Choose a service --</option>';
+        services.forEach(s => {
+          const option = document.createElement("option");
+          option.value = s.name;
+          option.textContent = `${s.name} (about ${s.durationMinutes} min per visit)`;
+          select.appendChild(option);
+        });
+        select.value = chosen;
+      } catch (e) { /* keep the built-in options */ }
+    }
+    loadServices();
+
     // ----- Queue module (backend): /api/queue/join and /api/queue/leave/{id} -----
     // Returns { item } on success or { error } with the backend's message.
     async function joinBackendQueue(name, contact, serviceName) {
@@ -258,7 +280,8 @@
         const res = await fetch("/api/queue/join", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, contact, serviceName, priority: 3 })
+          // A4: userId links the QueueEntry row to the logged-in user (UserCredentials)
+          body: JSON.stringify({ userId: String(getUserId() ?? ""), name, contact, serviceName, priority: 3 })
         });
         let body = null;
         try { body = await res.json(); } catch (e) {}

@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ClinicApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using RadiantMindClinic.Models;
 using RadiantMindClinic.Services;
@@ -32,8 +36,7 @@ namespace RadiantMindClinic.Controllers
                 return BadRequest(new { message = "Patient name and contact info are required." });
             }
 
-            var item = _queueService.JoinQueue(request);
-            return Ok(item);
+            return Safely(() => Ok(_queueService.JoinQueue(request)));
         }
 
         // DELETE: api/queue/leave/{id}
@@ -54,6 +57,44 @@ namespace RadiantMindClinic.Controllers
             if (servedPatient == null) return NotFound(new { message = "No patients waiting in queue." });
 
             return Ok(servedPatient);
+        }
+
+        // GET: api/queue/state?serviceName=Dr. Nate   -> { serviceName, status: "Open" | "Closed" }
+        [HttpGet("state")]
+        public IActionResult GetQueueState([FromQuery] string serviceName)
+        {
+            var status = _queueService is SqlQueueService sql ? sql.GetQueueStatus(serviceName) : "Open";
+            return Ok(new { serviceName, status });
+        }
+
+        // POST: api/queue/state?serviceName=Dr. Nate&open=false   (admin opens / closes a queue)
+        [HttpPost("state")]
+        public IActionResult SetQueueState([FromQuery] string serviceName, [FromQuery] bool open)
+        {
+            if (_queueService is not SqlQueueService sql)
+                return BadRequest(new { message = "Opening and closing queues needs the database." });
+            return Safely(() => Ok(new { serviceName, status = sql.SetQueueStatus(serviceName, open) }));
+        }
+
+        // turns database-module errors into 400 / 404 / 409 with a message the page can show
+        private IActionResult Safely(Func<IActionResult> action)
+        {
+            try
+            {
+                return action();
+            }
+            catch (ApiValidationException ex)
+            {
+                return BadRequest(new { message = string.Join(" ", ex.Errors.Values), errors = ex.Errors });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
         }
 
         // GET: api/queue/status/{id}

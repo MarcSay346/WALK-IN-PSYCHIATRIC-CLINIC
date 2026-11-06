@@ -9,7 +9,7 @@ builder.Services.AddAccounts();                  // Login/register module (UserC
 builder.Services.AddNotificationAndHistory();   // Notification + History modules (Notification, VisitHistory tables)
 builder.Services.AddWaitTime();                 // Wait-time module (registers WaitTimeService as a singleton)
 builder.Services.AddControllers();              // Queue module uses a controller (QueueController)
-builder.Services.AddSingleton<IQueueService, QueueService>();   // Queue module (in memory, one shared queue)
+builder.Services.AddQueue();                    // Queue module (Queue, QueueEntry tables)
 builder.Services.AddServiceManagement();       // Service Management module (Kayson)
 var app = builder.Build();
 

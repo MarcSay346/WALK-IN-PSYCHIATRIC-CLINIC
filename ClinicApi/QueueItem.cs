@@ -5,6 +5,7 @@ namespace RadiantMindClinic.Models
     public class QueueItem
     {
         public string Id { get; set; } = Guid.NewGuid().ToString("N").Substring(0, 8);
+        public string UserId { get; set; }       // A4: who joined (logged-in user's id or email)
         public string Name { get; set; }
         public string Contact { get; set; }
         public string ServiceName { get; set; } // e.g., "Dr. Nate", "Dr. Valdez", "Dr. Cole"
@@ -16,6 +17,7 @@ namespace RadiantMindClinic.Models
 
     public class JoinQueueRequest
     {
+        public string UserId { get; set; }       // A4: required when the queue is stored in the database
         public string Name { get; set; }
         public string Contact { get; set; }
         public string ServiceName { get; set; }
