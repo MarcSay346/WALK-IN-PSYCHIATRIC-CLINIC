@@ -1,3 +1,4 @@
+using ClinicApi.Data;
 using ClinicApi.Services;
 
 namespace ClinicApi.Endpoints;
@@ -11,7 +12,10 @@ public static class ServiceEndpoints
 {
     public static IServiceCollection AddServiceManagement(this IServiceCollection services)
     {
-        services.AddSingleton<ServiceCatalog>();
+        // A4: Service table when a ClinicDb connection string is set, otherwise in memory
+        services.AddSingleton(sp => DatabaseSetup.Pick(sp,
+            db => new ServiceCatalog(new SqlServiceRepository(db)),
+            () => new ServiceCatalog()));
         return services;
     }
 

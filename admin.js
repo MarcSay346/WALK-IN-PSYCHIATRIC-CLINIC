@@ -4,26 +4,54 @@ document.addEventListener("DOMContentLoaded", function () {
   setupQueue();
 });
 
+// A4: queue Open / Closed status is saved in the Queue table
+// (GET/POST /api/queue/state?serviceName=...&open=true|false).
 function setupDashboard() {
   const table = document.getElementById("dashboardServiceTable");
   if (!table) return;
+  const message = document.getElementById("dashboardMessage");
 
-  table.addEventListener("click", function (event) {
+  function showStatus(row, isOpen) {
+    const status = row.querySelector(".status");
+    const button = row.querySelector(".toggle-queue");
+    row.dataset.open = String(isOpen);
+    status.textContent = isOpen ? "Open" : "Closed";
+    status.className = isOpen ? "status open" : "status closed";
+    if (button) button.textContent = isOpen ? "Close Queue" : "Open Queue";
+  }
+
+  // load the saved status for each service
+  table.querySelectorAll("tbody tr").forEach(async function (row) {
+    const name = row.querySelector(".service-name").textContent;
+    try {
+      const res = await fetch(`/api/queue/state?serviceName=${encodeURIComponent(name)}`);
+      if (res.ok) showStatus(row, (await res.json()).status === "Open");
+    } catch (e) { /* keep what the page shows */ }
+  });
+
+  table.addEventListener("click", async function (event) {
     if (!event.target.classList.contains("toggle-queue")) return;
     const row = event.target.closest("tr");
-    const isOpen = row.dataset.open === "true";
-    const nowOpen = adminLogic.toggleQueue(isOpen);
-    const status = row.querySelector(".status");
     const name = row.querySelector(".service-name").textContent;
+    const nowOpen = adminLogic.toggleQueue(row.dataset.open === "true");
 
-    row.dataset.open = String(nowOpen);
-    status.textContent = nowOpen ? "Open" : "Closed";
-    status.className = nowOpen ? "status open" : "status closed";
-    event.target.textContent = nowOpen ? "Close Queue" : "Open Queue";
-    document.getElementById("dashboardMessage").textContent = name + " queue was " + (nowOpen ? "opened." : "closed.");
+    try {
+      const res = await fetch(`/api/queue/state?serviceName=${encodeURIComponent(name)}&open=${nowOpen}`, { method: "POST" });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        message.textContent = (body && body.message) || "Could not change the queue status.";
+        return;
+      }
+      showStatus(row, body.status === "Open");
+      message.textContent = name + " queue was " + (nowOpen ? "opened." : "closed.");
+    } catch (e) {
+      message.textContent = "Can't reach the server. Is dotnet run still going?";
+    }
   });
 }
 
+// A4: services are loaded from and saved to the Service table
+// (GET /api/services, POST /api/services, PUT /api/services/{id}).
 function setupServices() {
   const form = document.getElementById("serviceForm");
   if (!form) return;
@@ -35,7 +63,7 @@ function setupServices() {
     duration: document.getElementById("serviceDuration"),
     priority: document.getElementById("servicePriority")
   };
-  const editing = document.getElementById("editingRow");
+  const editing = document.getElementById("editingRow");   // holds the service id being edited
   const error = document.getElementById("serviceError");
   const message = document.getElementById("serviceMessage");
 
@@ -47,14 +75,30 @@ function setupServices() {
     if (titleEl) titleEl.textContent = "Create Service";
   }
 
-  function fillRow(row, values) {
-    row.querySelector(".name").textContent = values.name;
-    row.querySelector(".description").textContent = values.description;
-    row.querySelector(".duration").textContent = values.duration;
-    row.querySelector(".priority").textContent = values.priority;
+  function addRow(service) {
+    const row = table.insertRow();
+    row.dataset.id = service.id;
+    row.innerHTML = '<td class="name"></td><td class="description"></td><td class="duration"></td><td class="priority"></td><td><button class="admin-btn small edit-service">Edit</button></td>';
+    row.querySelector(".name").textContent = service.name;
+    row.querySelector(".description").textContent = service.description;
+    row.querySelector(".duration").textContent = service.durationMinutes;
+    row.querySelector(".priority").textContent = service.priority;
   }
 
-  form.addEventListener("submit", function (event) {
+  async function loadServices() {
+    if (!table) return;
+    try {
+      const res = await fetch("/api/services");
+      if (!res.ok) throw new Error();
+      const services = await res.json();
+      table.innerHTML = "";
+      services.forEach(addRow);
+    } catch (e) {
+      message.textContent = "Could not load services from the server.";
+    }
+  }
+
+  form.addEventListener("submit", async function (event) {
     event.preventDefault();
     const formValues = {};
     Object.keys(fields).forEach(key => formValues[key] = fields[key].value);
@@ -65,22 +109,31 @@ function setupServices() {
       return;
     }
     const values = result.values;
+    const isNew = editing.value === "";
 
-    let row;
-    if (editing.value === "") {
-      if (table) {
-        row = table.insertRow();
-        row.innerHTML = '<td class="name"></td><td class="description"></td><td class="duration"></td><td class="priority"></td><td><button class="admin-btn small edit-service">Edit</button></td>';
+    try {
+      const res = await fetch(isNew ? "/api/services" : `/api/services/${editing.value}`, {
+        method: isNew ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: values.name,
+          description: values.description,
+          durationMinutes: Number(values.duration),
+          priority: values.priority
+        })
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        error.textContent = (body && body.errors && Object.values(body.errors).join(" "))
+          || (body && body.error) || "Could not save the service.";
+        return;
       }
-      message.textContent = values.name + " was created.";
-    } else {
-      if (table) {
-        row = table.rows[Number(editing.value)];
-      }
-      message.textContent = values.name + " was updated.";
+      clearForm();
+      message.textContent = values.name + (isNew ? " was created." : " was updated.");
+      await loadServices();
+    } catch (e) {
+      error.textContent = "Can't reach the server. Is dotnet run still going?";
     }
-    if (row) fillRow(row, values);
-    clearForm();
   });
 
   if (table) {
@@ -88,7 +141,7 @@ function setupServices() {
       if (!event.target.classList.contains("edit-service")) return;
       const row = event.target.closest("tr");
       Object.keys(fields).forEach(key => fields[key].value = row.querySelector("." + key).textContent);
-      editing.value = row.sectionRowIndex;
+      editing.value = row.dataset.id;
       const titleEl = document.getElementById("formTitle");
       if (titleEl) titleEl.textContent = "Edit Service";
     });
@@ -96,6 +149,8 @@ function setupServices() {
 
   const clearBtn = document.getElementById("clearServiceForm");
   if (clearBtn) clearBtn.addEventListener("click", clearForm);
+
+  loadServices();
 }
 
 function setupQueue() {

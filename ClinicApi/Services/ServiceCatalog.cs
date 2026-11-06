@@ -1,3 +1,5 @@
+using ClinicApi.Data;
+
 namespace ClinicApi.Services;
 
 /// <summary>A clinic service (provider/visit type) the admin can create, update and list.</summary>
@@ -7,8 +9,9 @@ public record ClinicService(int Id, string Name, string Description, int Duratio
 public record ServiceRequest(string? Name, string? Description, int? DurationMinutes, string? Priority);
 
 /// <summary>
-/// Service Management module (A3 module 2): in-memory list of services.
-/// Each service has a name, description, expected duration and priority level.
+/// Service Management module (A3 module 2). Each service has a name, description,
+/// expected duration and priority level.
+/// A4: stored through an IServiceRepository (Service table in SQL Server, in memory in the unit tests).
 /// </summary>
 public class ServiceCatalog
 {
@@ -17,11 +20,14 @@ public class ServiceCatalog
     public const int MaxDurationMinutes = 480;
     public static readonly string[] Priorities = { "Low", "Medium", "High" };
 
-    private readonly List<ClinicService> _services = new();
+    private readonly IServiceRepository _store;
     private readonly object _lock = new();
-    private int _nextId = 1;
 
-    public ServiceCatalog()
+    /// <summary>Database version (the starting services come from the seed data in schema.sql).</summary>
+    public ServiceCatalog(IServiceRepository store) => _store = store;
+
+    /// <summary>In-memory version with the starting services (unit tests / no database).</summary>
+    public ServiceCatalog() : this(new InMemoryServiceRepository())
     {
         // same starting services the admin pages show
         Create(new ServiceRequest("Dr. Nate", "General counseling visit", 60, "High"));
@@ -31,13 +37,13 @@ public class ServiceCatalog
 
     public IReadOnlyList<ClinicService> List()
     {
-        lock (_lock) return _services.ToList();
+        lock (_lock) return _store.List();
     }
 
     public ClinicService Get(int id)
     {
         lock (_lock)
-            return _services.FirstOrDefault(s => s.Id == id)
+            return _store.Get(id)
                 ?? throw new KeyNotFoundException($"Service {id} was not found.");
     }
 
@@ -46,12 +52,10 @@ public class ServiceCatalog
         var clean = Validate(request);
         lock (_lock)
         {
-            if (_services.Any(s => s.Name.Equals(clean.Name, StringComparison.OrdinalIgnoreCase)))
+            if (_store.FindByName(clean.Name) is not null)
                 throw new InvalidOperationException($"A service named '{clean.Name}' already exists.");
 
-            var service = clean with { Id = _nextId++ };
-            _services.Add(service);
-            return service;
+            return _store.Add(clean);
         }
     }
 
@@ -60,14 +64,14 @@ public class ServiceCatalog
         var clean = Validate(request);
         lock (_lock)
         {
-            var index = _services.FindIndex(s => s.Id == id);
-            if (index < 0)
+            if (_store.Get(id) is null)
                 throw new KeyNotFoundException($"Service {id} was not found.");
-            if (_services.Any(s => s.Id != id && s.Name.Equals(clean.Name, StringComparison.OrdinalIgnoreCase)))
+            var sameName = _store.FindByName(clean.Name);
+            if (sameName is not null && sameName.Id != id)
                 throw new InvalidOperationException($"A service named '{clean.Name}' already exists.");
 
             var updated = clean with { Id = id };
-            _services[index] = updated;
+            _store.Update(updated);
             return updated;
         }
     }
