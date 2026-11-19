@@ -11,6 +11,7 @@ builder.Services.AddWaitTime();                 // Wait-time module (registers W
 builder.Services.AddControllers();              // Queue module uses a controller (QueueController)
 builder.Services.AddQueue();                    // Queue module (Queue, QueueEntry tables)
 builder.Services.AddServiceManagement();       // Service Management module (Kayson)
+builder.Services.AddReports();                  // Final: Reporting module (admin only, JSON + CSV)
 var app = builder.Build();
 
 // Debug: send error details back in the response
@@ -35,11 +36,14 @@ app.MapAccountEndpoints();
 // ---------- NOTIFICATIONS + HISTORY (/api/notifications, /api/history, /api/queue-events) ----------
 app.MapNotificationAndHistoryEndpoints();
 
-// ---------- WAIT TIME (/api/wait-time) ----------
+// ---------- WAIT TIME (/api/wait-time, /api/wait-time/smart) ----------
 app.MapWaitTimeEndpoints();
 
 // ---------- SERVICES (/api/services) ----------
 app.MapServiceEndpoints();
+
+// ---------- REPORTS (/api/reports/users, /api/reports/services, /api/reports/stats) ----------
+app.MapReportEndpoints();
 
 // ---------- QUEUE (/api/queue, /api/queue/join, /api/queue/leave/{id}, /api/queue/serve-next, /api/queue/status/{id}) ----------
 app.MapControllers();

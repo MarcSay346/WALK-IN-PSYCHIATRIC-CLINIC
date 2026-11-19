@@ -65,6 +65,26 @@ public sealed class TestDatabase : IDbConnectionFactory, IDisposable
             new { name, durationMinutes, priority });
     }
 
+    /// <summary>Adds a queue for a service and returns the new QueueId.</summary>
+    public int AddQueue(int serviceId, string status = "Open")
+    {
+        using var db = Open();
+        return db.ExecuteScalar<int>(
+            "INSERT INTO Queue (ServiceId, Status) VALUES (@serviceId, @status); SELECT last_insert_rowid();",
+            new { serviceId, status });
+    }
+
+    /// <summary>Adds a queue visit (QueueEntry row) and returns the new EntryId. Times are UTC.</summary>
+    public int AddEntry(int queueId, int userId, DateTime joinUtc, string status = "Served", DateTime? endedUtc = null,
+        int priority = 3, string displayName = "Patient", int position = 1)
+    {
+        using var db = Open();
+        return db.ExecuteScalar<int>(
+            @"INSERT INTO QueueEntry (QueueId, UserId, DisplayName, Priority, Position, JoinTime, Status, EndedAt)
+              VALUES (@queueId, @userId, @displayName, @priority, @position, @joinUtc, @status, @endedUtc); SELECT last_insert_rowid();",
+            new { queueId, userId, displayName, priority, position, joinUtc, status, endedUtc });
+    }
+
     public T Scalar<T>(string sql, object? args = null)
     {
         using var db = Open();
