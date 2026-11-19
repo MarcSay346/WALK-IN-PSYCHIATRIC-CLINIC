@@ -1,0 +1,13 @@
+﻿Metric,Value
+From,2026-11-01
+To,2026-11-19
+Service,All services
+Total joined,166
+Served,148
+Canceled,13
+Still waiting,5
+Served rate (%),91.9
+Average wait (min),40.1
+Longest wait (min),100
+Busiest service,Dr. Cole
+Busiest hour,09:00

@@ -1,0 +1,4 @@
+﻿Service ID,Service,Description,Duration (min),Priority,Queue Status,Waiting Now,Total Joined,Served,Canceled,Avg Wait (min)
+3,Dr. Cole,General counseling visit,30,Low,Open,1,57,50,6,41.5
+1,Dr. Nate,General counseling visit,60,High,Open,3,57,51,3,40.5
+2,Dr. Valdez,General counseling visit,45,Medium,Open,1,52,47,4,38.1
