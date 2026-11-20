@@ -484,3 +484,9 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# ---------- QueueSmart project ----------
+# generated coverage reports (re-create with coverage.ps1 / npm run coverage)
+coverage/
+coverage-report/
+TestResults/
