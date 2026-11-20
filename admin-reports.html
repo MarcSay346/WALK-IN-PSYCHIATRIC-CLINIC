@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports | Radiant Mind</title>
+  <link rel="icon" href="brain-logo.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">
+        <img src="brain-logo.png" alt="">
+        <span class="brand-name">Radiant Mind</span>
+        <span class="brand-sub">Walk-In Psychiatric Clinic</span>
+      </a>
+      <ul>
+        <li><a href="admin-dashboard.html">Admin Dashboard</a></li>
+        <li><a href="admin-services.html">Services</a></li>
+        <li><a href="admin-queue.html">Queue</a></li>
+        <li><a class="active" href="admin-reports.html">Reports</a></li>
+        <li><a href="index.html">Home</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <header class="page-heading">
+      <div>
+        <h1>Reports</h1>
+        <p>Queue activity, service usage and patient history. Admins only.</p>
+      </div>
+      <div class="button-row no-print">
+        <button class="admin-btn secondary" id="printReport" type="button">Print / Save as PDF</button>
+        <a class="admin-btn secondary" href="admin-dashboard.html">Back to Dashboard</a>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <section class="admin-panel no-print">
+      <form id="reportFilters" class="report-filters" novalidate>
+        <div>
+          <label for="reportFrom">From</label>
+          <input id="reportFrom" type="date">
+        </div>
+        <div>
+          <label for="reportTo">To</label>
+          <input id="reportTo" type="date">
+        </div>
+        <div>
+          <label for="reportService">Service</label>
+          <select id="reportService"><option value="">All services</option></select>
+        </div>
+        <div class="button-row">
+          <button class="admin-btn" type="submit">Generate Report</button>
+          <button class="admin-btn secondary" id="clearFilters" type="button">Clear</button>
+        </div>
+      </form>
+      <p id="reportMessage" class="message" aria-live="polite"></p>
+    </section>
+
+    <p class="report-scope"><strong id="reportScope">All services · All dates</strong> <span id="reportGenerated"></span></p>
+
+    <!-- 1. Queue usage statistics -->
+    <section class="admin-panel report-section">
+      <div class="report-heading">
+        <h2>Queue Usage Statistics</h2>
+        <button class="admin-btn small no-print" data-export="stats" type="button">Export CSV</button>
+      </div>
+      <div id="statCards" class="stat-grid"></div>
+      <p class="report-note">Wait time = from joining the queue until the patient was served.</p>
+    </section>
+
+    <!-- 2. Services and queue activity -->
+    <section class="admin-panel report-section">
+      <div class="report-heading">
+        <h2>Services &amp; Queue Activity</h2>
+        <button class="admin-btn small no-print" data-export="services" type="button">Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table id="servicesReport">
+          <thead>
+            <tr><th>Service</th><th>Duration</th><th>Priority</th><th>Queue</th><th>Waiting Now</th>
+                <th>Joined</th><th>Served</th><th>Canceled</th><th>Avg Wait</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. Users and their queue history -->
+    <section class="admin-panel report-section">
+      <div class="report-heading">
+        <h2>Patients &amp; Queue History</h2>
+        <button class="admin-btn small no-print" data-export="users" type="button">Export CSV</button>
+      </div>
+      <p class="report-note no-print">Click a patient to see each visit.</p>
+      <div class="table-wrap">
+        <table id="usersReport">
+          <thead>
+            <tr><th>Patient</th><th>Email</th><th>Visits</th><th>Served</th><th>Canceled</th><th>Avg Wait</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="adminReports.js"></script>
+</body>
+</html>
